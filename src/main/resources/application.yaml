@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: Y TE
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/Emed2
+    username: postgres
+    password: 12345
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      idle-timeout: 600000
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect   #Thêm dòng này
+    properties:
+      hibernate:
+        format_sql: true
+
+  mail:
+    default-encoding: UTF-8
+    host: smtp.gmail.com
+    username: eschoolmed391@gmail.com
+    password: "raef qciq wrvn ipxh"
+    port: 587
+    protocol: smtp
+    test-connection: false
+    properties:
+      mail.smtp.ssl.trust: "*"
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+jwt:
+  signer-key: HJ4ppveef04BKJzTq+dyLhRdicqYiQWxaSqTLiTUxksDu4zMs/NLfrJsbHz+4OiB
+  expiration-duration: 86400 #don vi giay
+
+springdoc:
+  api-docs:
+    path: "/api/v1/api-docs"
+  swagger-ui:
+    operationsSorter: method
+    try-it-out-enabled: true
+    path: "/api/swagger-ui.html"
+  servers: http://localhost:8080
