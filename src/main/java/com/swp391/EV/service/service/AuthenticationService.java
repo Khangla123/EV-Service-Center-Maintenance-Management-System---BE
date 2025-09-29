@@ -27,11 +27,10 @@ import java.sql.Date;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 
 
 @Service
-public class UserService {
+public class AuthenticationService {
     @Value("${jwt.signer-key}")
     private String KEY;
     @Value("${jwt.expiration-duration}")
@@ -68,11 +67,12 @@ public class UserService {
 
         String token = generateToken(user);
 
-        LoginResponse resp = new LoginResponse();
-        resp.setUserId(user.getId());
-        resp.setEmail(user.getEmail());
-        resp.setRole(user.getRole());
-        resp.setAccessToken(token);
+        LoginResponse resp = LoginResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .accessToken(token)
+                .build();
 
 
         System.out.println("Generated Token: " + token);
@@ -118,11 +118,11 @@ public class UserService {
         return jwsObject.serialize();
     }
 
-    public UUID extractUserIdFromToken(String token) {
+    public Long extractUserIdFromToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
             String subject = signedJWT.getJWTClaimsSet().getSubject();
-            return UUID.fromString(subject);
+            return Long.parseLong(subject);
         } catch (Exception e) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }

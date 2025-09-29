@@ -17,7 +17,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 @Slf4j
 public class CustomJwtDecoder implements JwtDecoder {
-    //private final UserService userService; đang sửa
+    //private final AuthenticationService userService; đang sửa
     @Value("${jwt.signer-key}")
     private String KEY;
     private NimbusJwtDecoder nimbusJwtDecoder = null;
