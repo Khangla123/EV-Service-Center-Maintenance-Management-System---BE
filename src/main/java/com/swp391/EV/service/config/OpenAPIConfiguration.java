@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,14 +13,12 @@ import org.springframework.context.annotation.Configuration;
         +
         "} API")
 public class OpenAPIConfiguration {
-    @Value("${springdoc.servers}")
-    private String serverUrl;
 
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new io.swagger.v3.oas.models.info.Info().title("REST API").version("v3"))
-                .addServersItem(new Server().url(serverUrl).description("API Gateway"))
+                .addServersItem(new Server().url("http://localhost:8080").description("API Gateway"))
                 .addSecurityItem(new SecurityRequirement().addList("Bearer Authentication"));
     }
 
