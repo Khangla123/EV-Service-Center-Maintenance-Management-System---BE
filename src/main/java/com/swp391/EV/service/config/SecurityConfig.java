@@ -36,6 +36,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/swagger-ui/index.html").permitAll()
 
+                        // UserController
+                        .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
+
+
+
 
 
                         .anyRequest().authenticated()
