@@ -27,10 +27,11 @@ import java.sql.Date;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 
 @Service
-public class AuthenticationService {
+public class AuthService {
     @Value("${jwt.signer-key}")
     private String KEY;
     @Value("${jwt.expiration-duration}")
@@ -54,11 +55,11 @@ public class AuthenticationService {
                         ErrorCode.USERNAME_OR_PASSWORD_ERROR.getMessage()
                 ));
 
-        if (!Boolean.TRUE.equals(user.getIsActive())) {
+        if (!user.isActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa");
         }
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new ResponseStatusException(
                     ErrorCode.USERNAME_OR_PASSWORD_ERROR.getStatusCode(),
                     ErrorCode.USERNAME_OR_PASSWORD_ERROR.getMessage()
@@ -71,6 +72,7 @@ public class AuthenticationService {
                 .userId(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .fullName(user.getFullName())
                 .accessToken(token)
                 .build();
 
@@ -104,7 +106,7 @@ public class AuthenticationService {
     private String generateToken(User user) throws JOSEException { // tao token
         JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getId() + "")
+                .subject(user.getId().toString())
                 .issuer("Khanglv")
                 .issueTime(Date.from(Instant.now()))
                 .expirationTime(Date.from(Instant.now().plus(EXPIRATION_DURATION, ChronoUnit.SECONDS)))
@@ -118,11 +120,15 @@ public class AuthenticationService {
         return jwsObject.serialize();
     }
 
-    public Long extractUserIdFromToken(String token) {
+    public String generateTokenForUser(User user) throws JOSEException {
+        return generateToken(user);
+    }
+
+    public UUID extractUserIdFromToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
             String subject = signedJWT.getJWTClaimsSet().getSubject();
-            return Long.parseLong(subject);
+            return UUID.fromString(subject);
         } catch (Exception e) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
