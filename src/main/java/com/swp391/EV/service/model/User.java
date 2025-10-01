@@ -3,11 +3,10 @@ package com.swp391.EV.service.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_email", columnNames = "email")
-})
+@Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,47 +14,45 @@ import java.time.OffsetDateTime;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
 
-    @Column(nullable=false, length=255, unique = true)
+    @Column(name = "username")
+    private String username;
+
+    @Column(name = "email")
     private String email;
 
-    @Column(nullable=false, length=255)
-    private String password;
+    @Column(name = "password_hash")
+    private String passwordHash;
 
-    @Column(name="first_name", length=255)
-    private String firstName;
+    @Column(name = "role")
+    private String role = "user";
 
-    @Column(name="last_name", length=255)
-    private String lastName;
+    @Column(name = "full_name")
+    private String fullName;
 
-    @Column(length=20)
+    @Column(name = "phone")
     private String phone;
 
-    @Column(length=50, nullable=false)
-    private String role = "CUSTOMER";
+    @Column(name = "address")
+    private String address;
 
-    @Column(length=500)
-    private String avatar;
+    @Column(name = "is_active")
+    private boolean isActive = true;
 
-    @Column(name="is_active", nullable=false)
-    private Boolean isActive = true;
+    @Column(name = "email_verified")
+    private boolean emailVerified = false;
 
-    @Column(name="created_at", insertable = false, updatable = false, nullable = false)
+    @Column(name = "last_login")
+    private OffsetDateTime lastLogin;
+
+    @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
-    @Column(name="updated_at", insertable = false, updatable = false, nullable = false)
+    @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    @PrePersist
-    public void prePersist() {
-        if (role == null) role = "CUSTOMER";
-        if (isActive == null) isActive = true;
-    }
 
-    public String getFullName() {
-        if (firstName == null && lastName == null) return null;
-        return (firstName == null ? "" : firstName) + (lastName == null ? "" : (" " + lastName));
-    }
+
 }

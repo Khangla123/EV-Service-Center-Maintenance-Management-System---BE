@@ -7,10 +7,10 @@ import java.util.UUID;
 
 @Data
 @Builder
-public class LoginResponse {
+public class RegisterResponse {
     private UUID userId;
     private String email;
-    private String role;
     private String fullName;
-    private String accessToken;
+    private String message;
+    private LoginResponse loginInfo;
 }
