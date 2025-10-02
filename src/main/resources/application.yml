@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: EV-Service
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/EVService
+    username: postgres
+    password: 12345
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      idle-timeout: 600000
+  
+  thymeleaf:
+    check-template-location: false
+  
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+  
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: eschoolmed391@gmail.com
+    password: "raef qciq wrvn ipxh"
+    default-encoding: UTF-8
+    protocol: smtp
+    test-connection: false
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            trust: "*"
+
+jwt:
+  signer-key: HJ4ppveef04BKJzTq+dyLhRdicqYiQWxaSqTLiTUxksDu4zMs/NLfrJsbHz+4OiB
+  expiration-duration: 86400
+
+springdoc:
+  api-docs:
+    path: /api/v1/api-docs
+  swagger-ui:
+    path: /api/swagger-ui.html
+    operations-sorter: method
+    try-it-out-enabled: true
+  servers:
+    - url: http://localhost:8080
+      description: Local
