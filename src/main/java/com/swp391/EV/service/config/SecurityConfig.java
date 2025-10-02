@@ -37,11 +37,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/swagger-ui/index.html").permitAll()
 
                         // AuthController
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll() //đăng nhập
 
                         // UserController
-                        .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
-
+                        .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()// đăng kí tài khoản
+                        .requestMatchers(HttpMethod.GET, "/api/users/user").hasAuthority("ADMIN") //danh sách user
 
 
 

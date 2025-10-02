@@ -2,6 +2,7 @@ package com.swp391.EV.service.service;
 
 import com.nimbusds.jose.JOSEException;
 import com.swp391.EV.service.dto.request.RegisterRequest;
+import com.swp391.EV.service.dto.response.GetAllUserResponse;
 import com.swp391.EV.service.dto.response.LoginResponse;
 import com.swp391.EV.service.dto.response.RegisterResponse;
 import com.swp391.EV.service.exception.ErrorCode;
@@ -12,6 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class UserService {
@@ -70,5 +74,24 @@ public class UserService {
                 .message("Đăng ký tài khoản thành công")
                 .loginInfo(loginResponse)
                 .build();
+    }
+
+    public List<GetAllUserResponse> getAllUser() {
+        List<User> users = userRepository.findAll();
+        List<GetAllUserResponse> responses = new ArrayList<>();
+        for (User user : users) {
+            GetAllUserResponse userResponse = GetAllUserResponse.builder()
+                    .id(user.getId())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .phone(user.getPhone())
+                    .address(user.getAddress())
+                    .role(user.getRole())
+                    .createdAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null)
+                    .build();
+            responses.add(userResponse);
+        }
+        return responses;
     }
 }
