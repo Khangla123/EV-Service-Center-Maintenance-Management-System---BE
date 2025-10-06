@@ -42,8 +42,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()// nhập mail quên mk
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify-otp").permitAll()// nhập otp
                         .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()// mk mới
-                        .requestMatchers(HttpMethod.GET, "/api/auth/me").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me").permitAll()// hiển thị thôgn tin user hiện tại
+                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()// đăng xuất
 
 
                         // UserController

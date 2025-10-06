@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
@@ -27,7 +28,6 @@ public class UserController {
                 .build();
     }
 
-
     @GetMapping("/user")
     ApiResponse<List<GetAllUserResponse>> getAllUser() {
         List<GetAllUserResponse> responses = userService.getAllUser();
@@ -36,4 +36,14 @@ public class UserController {
                 .result(responses)
                 .build();
     }
+
+    @GetMapping("/user/{id}")
+    ApiResponse<GetAllUserResponse> getUserById(@PathVariable UUID id) {
+        GetAllUserResponse response = userService.getUserById(id);
+        return ApiResponse.<GetAllUserResponse>builder()
+                .message("Thông tin user.")
+                .result(response)
+                .build();
+    }
+
 }
