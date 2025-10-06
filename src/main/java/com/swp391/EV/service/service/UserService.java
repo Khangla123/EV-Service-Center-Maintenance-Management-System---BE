@@ -5,6 +5,7 @@ import com.swp391.EV.service.dto.request.RegisterRequest;
 import com.swp391.EV.service.dto.response.GetAllUserResponse;
 import com.swp391.EV.service.dto.response.LoginResponse;
 import com.swp391.EV.service.dto.response.RegisterResponse;
+import com.swp391.EV.service.exception.AppException;
 import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.User;
 import com.swp391.EV.service.repository.UserRepository;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -95,4 +97,19 @@ public class UserService {
         }
         return responses;
     }
+
+    public GetAllUserResponse getUserById(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return GetAllUserResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
+                .role(user.getRole())
+                .createdAt(String.valueOf(user.getCreatedAt()))
+                .build();
+    }
+
 }

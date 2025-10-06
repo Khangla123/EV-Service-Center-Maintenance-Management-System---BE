@@ -155,7 +155,7 @@ public class AuthService {
         token.setOtpCode(otp);
         token.setExpiryTime(LocalDateTime.now().plusMinutes(5));
         tokenRepository.save(token);
-        mailService.sendOtpEmail(email,otp);
+        mailService.sendOtpEmail(email, otp);
     }
 
 
@@ -164,7 +164,7 @@ public class AuthService {
         PasswordResetToken token = tokenRepository.findByEmailAndOtpCode(email, otpCode)
                 .orElseThrow(() -> new AppException(ErrorCode.ERROR_OTP));
 
-        if(token.getExpiryTime().isBefore(LocalDateTime.now())) {
+        if (token.getExpiryTime().isBefore(LocalDateTime.now())) {
             throw new AppException(ErrorCode.EXPIRY_OTP);
         }
         token.setVerified(true);
@@ -206,6 +206,12 @@ public class AuthService {
                 .build();
     }
 
-
+    public void logout(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
 
 }
+
+

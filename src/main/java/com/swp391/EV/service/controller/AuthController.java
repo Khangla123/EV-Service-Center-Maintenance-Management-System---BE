@@ -68,6 +68,16 @@ public class AuthController {
                 .build();
     }
 
+    @PostMapping("/logout")
+    ApiResponse<Void> logout(Authentication authentication) {
+        authService.logout(authentication);
+        return ApiResponse.<Void>builder()
+                .message("Đăng xuất thành công")
+                .result(null)
+                .build();
+    }
+
+
 
 
 }
