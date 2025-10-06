@@ -1,0 +1,8 @@
+package com.swp391.EV.service.dto.request;
+
+import lombok.Data;
+
+@Data
+public class RequestResetRequest {
+    private String email;
+}

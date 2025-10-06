@@ -36,12 +36,24 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/swagger-ui/index.html").permitAll()
 
+
                         // AuthController
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll() //đăng nhập
+                        .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()// nhập mail quên mk
+                        .requestMatchers(HttpMethod.POST, "/api/auth/verify-otp").permitAll()// nhập otp
+                        .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()// mk mới
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me").permitAll()
+
+
 
                         // UserController
                         .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()// đăng kí tài khoản
-                        .requestMatchers(HttpMethod.GET, "/api/users/user").hasAuthority("ADMIN") //danh sách user
+                        .requestMatchers(HttpMethod.GET, "/api/users/user").permitAll() //danh sách user
+
+
+
+                        // MailController
+                        .requestMatchers(HttpMethod.GET, "/api/mail/receive_email").permitAll()
 
 
 
