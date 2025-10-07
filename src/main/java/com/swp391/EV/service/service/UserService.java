@@ -2,6 +2,7 @@ package com.swp391.EV.service.service;
 
 import com.nimbusds.jose.JOSEException;
 import com.swp391.EV.service.dto.request.RegisterRequest;
+import com.swp391.EV.service.dto.request.UpdateUserRequest;
 import com.swp391.EV.service.dto.response.GetAllUserResponse;
 import com.swp391.EV.service.dto.response.LoginResponse;
 import com.swp391.EV.service.dto.response.RegisterResponse;
@@ -55,7 +56,7 @@ public class UserService {
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .address(request.getAddress())
-                .role("user")
+                .role("customer")
                 .isActive(true)
                 .createdAt(java.time.OffsetDateTime.now())
                 .build();
@@ -112,4 +113,76 @@ public class UserService {
                 .build();
     }
 
+    public GetAllUserResponse updateUser(UUID id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getAddress() != null && !request.getAddress().isBlank()) {
+            user.setAddress(request.getAddress());
+        }
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            user.setRole(request.getRole());
+        }
+
+        user.setUpdatedAt(java.time.OffsetDateTime.now());
+        userRepository.save(user);
+
+        return GetAllUserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
+                .address(user.getAddress())
+                .role(user.getRole())
+                .createdAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null)
+                .build();
+    }
+
+    public void deleteUser(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        userRepository.delete(user);
+    }
+
+    public GetAllUserResponse updateRole(UUID id, String role) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Validate role
+        if (role == null || role.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_KEY);
+        }
+
+        // Check if role is valid (admin, user, manager, etc.)
+        if (!isValidRole(role)) {
+            throw new AppException(ErrorCode.INVALID_KEY);
+        }
+
+        user.setRole(role);
+        user.setUpdatedAt(java.time.OffsetDateTime.now());
+        userRepository.save(user);
+
+        return GetAllUserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
+                .address(user.getAddress())
+                .role(user.getRole())
+                .createdAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null)
+                .build();
+    }
+
+    private boolean isValidRole(String role) {
+        return role.equals("admin") || role.equals("customer") || role.equals("technician") || role.equals("staff");
+    }
 }

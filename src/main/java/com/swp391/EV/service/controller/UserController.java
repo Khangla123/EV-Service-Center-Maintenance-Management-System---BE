@@ -3,6 +3,8 @@ package com.swp391.EV.service.controller;
 import com.nimbusds.jose.JOSEException;
 import com.swp391.EV.service.dto.ApiResponse;
 import com.swp391.EV.service.dto.request.RegisterRequest;
+import com.swp391.EV.service.dto.request.UpdateRoleRequest;
+import com.swp391.EV.service.dto.request.UpdateUserRequest;
 import com.swp391.EV.service.dto.response.GetAllUserResponse;
 import com.swp391.EV.service.dto.response.RegisterResponse;
 import com.swp391.EV.service.service.UserService;
@@ -43,6 +45,33 @@ public class UserController {
         return ApiResponse.<GetAllUserResponse>builder()
                 .message("Thông tin user.")
                 .result(response)
+                .build();
+    }
+
+    @PutMapping("/user/{id}")
+    ApiResponse<GetAllUserResponse> updateUser(@PathVariable UUID id, @RequestBody UpdateUserRequest request) {
+        GetAllUserResponse response = userService.updateUser(id, request);
+        return ApiResponse.<GetAllUserResponse>builder()
+                .message("Cập nhật thông tin user thành công.")
+                .result(response)
+                .build();
+    }
+
+    @PatchMapping("/user/{id}/role")
+    public ApiResponse<GetAllUserResponse> updateUserRole(@PathVariable UUID id, @RequestBody UpdateRoleRequest request) {
+        GetAllUserResponse response = userService.updateRole(id, request.getRole());
+        return ApiResponse.<GetAllUserResponse>builder()
+                .message("Cập nhật role thành công.")
+                .result(response)
+                .build();
+    }
+
+    @DeleteMapping("/user/{id}")
+    ApiResponse<Void> deleteUser(@PathVariable UUID id) {
+        userService.deleteUser(id);
+        return ApiResponse.<Void>builder()
+                .message("Xóa user thành công.")
+                .result(null)
                 .build();
     }
 
