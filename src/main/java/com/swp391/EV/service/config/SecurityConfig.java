@@ -49,8 +49,19 @@ public class SecurityConfig {
                         // UserController
                         .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()// đăng kí tài khoản
                         .requestMatchers(HttpMethod.GET, "/api/users/user").permitAll() //danh sách user
+                        .requestMatchers(HttpMethod.GET, "/api/users/user/**").permitAll() //lấy thông tin user theo id
+                        .requestMatchers(HttpMethod.PUT, "/api/users/user/**").permitAll() //cập nhật user theo id
+                        .requestMatchers(HttpMethod.PATCH, "/api/users/user/*/role").permitAll() //cập nhật role user theo id
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/user/**").permitAll() //xóa user theo id
 
 
+                        // CustomerController
+                        .requestMatchers(HttpMethod.GET, "/api/customers").permitAll() // danh sách khách hàng
+                        .requestMatchers(HttpMethod.POST, "/api/customers").permitAll() // tạo khách hàng mới
+                        .requestMatchers(HttpMethod.GET, "/api/customers/*").permitAll() // chi tiết khách hàng
+                        .requestMatchers(HttpMethod.PUT, "/api/customers/*").permitAll() // cập nhật khách hàng
+                        .requestMatchers(HttpMethod.GET, "/api/customers/me").permitAll() // hồ sơ của tôi
+                        .requestMatchers(HttpMethod.PUT, "/api/customers/me").permitAll() // cập nhật hồ sơ
 
                         // MailController
                         .requestMatchers(HttpMethod.GET, "/api/mail/receive_email").permitAll()
@@ -84,6 +95,7 @@ public class SecurityConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
         corsConfiguration.addAllowedOrigin("http://localhost:3000");
+        corsConfiguration.addAllowedOrigin("http://localhost:3001");
         corsConfiguration.addAllowedOrigin("http://localhost:3002");
         corsConfiguration.addAllowedOrigin("http://localhost:8080");
         corsConfiguration.addAllowedMethod("*");

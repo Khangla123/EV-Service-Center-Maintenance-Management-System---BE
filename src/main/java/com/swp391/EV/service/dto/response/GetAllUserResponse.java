@@ -17,6 +17,5 @@ public class GetAllUserResponse {
     private String address;
     private String role;
     private String createdAt;
-
-
+    private String updatedAt;
 }
