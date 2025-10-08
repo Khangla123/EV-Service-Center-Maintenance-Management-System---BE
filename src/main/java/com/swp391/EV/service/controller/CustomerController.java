@@ -59,8 +59,8 @@ public class CustomerController {
     }
 
     @GetMapping("/me")
-    ApiResponse<CustomerProfileResponse> getMyProfile() {
-        CustomerProfileResponse profile = customerService.getMyProfile();
+    ApiResponse<CustomerProfileResponse> getMyProfile(@RequestParam UUID customerId) {
+        CustomerProfileResponse profile = customerService.getCustomerById(customerId);
         return ApiResponse.<CustomerProfileResponse>builder()
                 .message("Hồ sơ của tôi")
                 .result(profile)
@@ -68,8 +68,8 @@ public class CustomerController {
     }
 
     @PutMapping("/me")
-    ApiResponse<CustomerResponse> updateMyProfile(@RequestBody CustomerUpdateRequest request) {
-        CustomerResponse customer = customerService.updateMyProfile(request);
+    ApiResponse<CustomerResponse> updateMyProfile(@RequestParam UUID customerId, @RequestBody CustomerUpdateRequest request) {
+        CustomerResponse customer = customerService.updateCustomer(customerId, request);
         return ApiResponse.<CustomerResponse>builder()
                 .message("Cập nhật hồ sơ thành công")
                 .result(customer)
