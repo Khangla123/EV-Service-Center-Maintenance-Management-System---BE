@@ -212,12 +212,6 @@ public class CustomerService {
     private CustomerResponse buildCustomerResponse(Customer customer) {
         return CustomerResponse.builder()
                 .id(customer.getId())
-                .customerCode(customer.getCustomerCode())
-                .dateOfBirth(customer.getDateOfBirth())
-                .subscriptionExpiry(customer.getSubscriptionExpiry())
-                .totalSpent(customer.getTotalSpent())
-                .createdAt(customer.getCreatedAt())
-                .userId(customer.getId()) // Same as customer ID since they're the same entity
                 .username(customer.getUsername())
                 .email(customer.getEmail())
                 .fullName(customer.getFullName())
@@ -227,8 +221,12 @@ public class CustomerService {
                 .isActive(customer.isActive())
                 .emailVerified(customer.isEmailVerified())
                 .lastLogin(customer.getLastLogin())
-                .userCreatedAt(customer.getUserCreatedAt())
-                .userUpdatedAt(customer.getUserUpdatedAt())
+                .dateOfBirth(customer.getDateOfBirth())
+                .customerCode(customer.getCustomerCode())
+                .subscriptionExpiry(customer.getSubscriptionExpiry())
+                .totalSpent(customer.getTotalSpent())
+                .createdAt(customer.getCreatedAt())
+                .updatedAt(customer.getUserUpdatedAt())
                 .build();
     }
 
