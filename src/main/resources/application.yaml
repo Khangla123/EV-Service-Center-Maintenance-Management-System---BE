@@ -6,7 +6,7 @@ spring:
     name: EV-Service
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/EVService
+    url: jdbc:postgresql://localhost:5432/EVService2
     username: postgres
     password: 12345
     hikari:
