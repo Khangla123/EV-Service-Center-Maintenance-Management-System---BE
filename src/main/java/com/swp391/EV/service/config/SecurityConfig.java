@@ -27,39 +27,35 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
 
-
-                        // Swagger access
+                        // Swagger access - Cấu hình đầy đủ cho SpringDoc OpenAPI 3
                         .requestMatchers(HttpMethod.GET, "/api/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/swagger-ui/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/swagger-ui/index.html").permitAll()
-
 
                         // AuthController
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll() //đăng nhập
                         .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()// nhập mail quên mk
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify-otp").permitAll()// nhập otp
                         .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()// mk mới
-                        .requestMatchers(HttpMethod.GET, "/api/auth/me").permitAll()// hiển thị thôgn tin user hiện tại
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me").permitAll()// hiển thị thông tin user hiện tại
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()// đăng xuất
-
 
                         // UserController
                         .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()// đăng kí tài khoản
-                        .requestMatchers(HttpMethod.GET, "/api/users/user").permitAll() //danh sách user
-                        .requestMatchers(HttpMethod.GET, "/api/users/user/**").permitAll() //lấy thông tin user theo id
-                        .requestMatchers(HttpMethod.PUT, "/api/users/user/**").permitAll() //cập nhật user theo id
-                        .requestMatchers(HttpMethod.PATCH, "/api/users/user/*/role").permitAll() //cập nhật role user theo id
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/user/**").permitAll() //xóa user theo id
-
+                        .requestMatchers(HttpMethod.GET, "/api/users").permitAll() //danh sách user
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").permitAll() //lấy thông tin user theo id
+                        .requestMatchers(HttpMethod.PUT, "/api/users/**").permitAll() //cập nhật user theo id
+                        .requestMatchers(HttpMethod.PATCH, "/api/users/*/role").permitAll() //cập nhật role user theo id
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").permitAll() //xóa user theo id
 
                         // CustomerController
                         .requestMatchers(HttpMethod.GET, "/api/customers").permitAll() // danh sách khách hàng
                         .requestMatchers(HttpMethod.POST, "/api/customers").permitAll() // tạo khách hàng mới
-                        .requestMatchers(HttpMethod.GET, "/api/customers/*").permitAll() // chi tiết khách hàng
-                        .requestMatchers(HttpMethod.PUT, "/api/customers/*").permitAll() // cập nhật khách hàng
+                        .requestMatchers(HttpMethod.GET, "/api/customers/**").permitAll() // chi tiết khách hàng
+                        .requestMatchers(HttpMethod.PUT, "/api/customers/**").permitAll() // cập nhật khách hàng
+                        .requestMatchers(HttpMethod.DELETE, "/api/customers/**").permitAll() // xóa khách hàng
                         .requestMatchers(HttpMethod.GET, "/api/customers/me").permitAll() // hồ sơ của tôi
                         .requestMatchers(HttpMethod.PUT, "/api/customers/me").permitAll() // cập nhật hồ sơ
 
@@ -69,37 +65,52 @@ public class SecurityConfig {
                         // ServiceCenterController
                         .requestMatchers(HttpMethod.GET, "/api/service-centers").permitAll() // danh sách trung tâm dịch vụ
                         .requestMatchers(HttpMethod.POST, "/api/service-centers").permitAll() // tạo trung tâm dịch vụ mới
-                        .requestMatchers(HttpMethod.GET, "/api/service-centers/{id}").permitAll() // chi tiết trung tâm dịch vụ
-                        .requestMatchers(HttpMethod.PUT, "/api/service-centers/{id}").permitAll() // cập nhật trung tâm dịch vụ
-                        .requestMatchers(HttpMethod.DELETE, "/api/service-centers/{id}").permitAll() // xóa trung tâm dịch vụ
+                        .requestMatchers(HttpMethod.GET, "/api/service-centers/**").permitAll() // chi tiết trung tâm dịch vụ
+                        .requestMatchers(HttpMethod.PUT, "/api/service-centers/**").permitAll() // cập nhật trung tâm dịch vụ
+                        .requestMatchers(HttpMethod.DELETE, "/api/service-centers/**").permitAll() // xóa trung tâm dịch vụ
+
+                        // ServicePackageController
+                        .requestMatchers(HttpMethod.GET, "/api/service-packages").permitAll() // danh sách gói dịch vụ
+                        .requestMatchers(HttpMethod.POST, "/api/service-packages").permitAll() // tạo gói dịch vụ mới
+                        .requestMatchers(HttpMethod.GET, "/api/service-packages/**").permitAll() // chi tiết gói dịch vụ
+                        .requestMatchers(HttpMethod.PUT, "/api/service-packages/**").permitAll() // cập nhật gói dịch vụ
+                        .requestMatchers(HttpMethod.DELETE, "/api/service-packages/**").permitAll() // xóa gói dịch vụ
+                        .requestMatchers(HttpMethod.GET, "/api/service-packages/center/**").permitAll() // gói dịch vụ theo trung tâm
 
                         // VehicleController
-                        .requestMatchers(HttpMethod.GET, "/api/vehicles").permitAll() // tìm kiếm xe
-                        .requestMatchers(HttpMethod.POST, "/api/vehicles").permitAll() // thêm xe mới
-                        .requestMatchers(HttpMethod.GET, "/api/vehicles/{id}").permitAll() // chi tiết xe
-                        .requestMatchers(HttpMethod.PUT, "/api/vehicles/{id}").permitAll() // cập nhật thông tin xe
-                        .requestMatchers(HttpMethod.DELETE, "/api/vehicles/{id}").permitAll() // xóa xe
-                        .requestMatchers(HttpMethod.GET, "/api/vehicles/customers/{customerId}").permitAll() // xe của khách hàng
-                        .requestMatchers(HttpMethod.POST, "/api/vehicles/customers/{customerId}").permitAll() // thêm xe cho khách hàng
-                        .requestMatchers(HttpMethod.GET, "/api/vehicles/me").permitAll() // xe của tôi
-                        .requestMatchers(HttpMethod.POST, "/api/vehicles/me").permitAll() // đăng ký xe mới
+                        .requestMatchers(HttpMethod.GET, "/api/vehicles").permitAll() // tìm kiếm xe (danh sách loại xe)
+                        .requestMatchers(HttpMethod.POST, "/api/vehicles").permitAll() // thêm loại xe mới
+                        .requestMatchers(HttpMethod.GET, "/api/vehicles/{id}").permitAll() // chi tiết loại xe
+                        .requestMatchers(HttpMethod.PUT, "/api/vehicles/{id}").permitAll() // cập nhật loại xe
+                        .requestMatchers(HttpMethod.DELETE, "/api/vehicles/{id}").permitAll() // xóa loại xe
+                        .requestMatchers(HttpMethod.GET, "/api/vehicles/customers/{customerId}/vehicles").permitAll() // xe của khách hàng
+                        .requestMatchers(HttpMethod.POST, "/api/vehicles/customers/{customerId}/vehicles").permitAll() // thêm xe cho khách hàng
+
+
+                        // VehicleModelController - Quản lý mẫu xe
+                        .requestMatchers(HttpMethod.GET, "/api/vehicle-models").permitAll() // danh sách mẫu xe
+                        .requestMatchers(HttpMethod.POST, "/api/vehicle-models").permitAll() // tạo mẫu xe mới
+                        .requestMatchers(HttpMethod.GET, "/api/vehicle-models/**").permitAll() // chi tiết mẫu xe
+                        .requestMatchers(HttpMethod.PUT, "/api/vehicle-models/**").permitAll() // cập nhật mẫu xe
+                        .requestMatchers(HttpMethod.DELETE, "/api/vehicle-models/**").permitAll() // xóa mẫu xe
+                        .requestMatchers(HttpMethod.GET, "/api/vehicle-models/manufacturer/**").permitAll() // mẫu xe theo hãng
 
                         // AppointmentController
                         .requestMatchers(HttpMethod.GET, "/api/appointments").permitAll() // danh sách lịch hẹn
                         .requestMatchers(HttpMethod.POST, "/api/appointments").permitAll() // đặt lịch hẹn
-                        .requestMatchers(HttpMethod.GET, "/api/appointments/{id}").permitAll() // chi tiết lịch hẹn
-                        .requestMatchers(HttpMethod.PUT, "/api/appointments/{id}").permitAll() // cập nhật lịch hẹn
-                        .requestMatchers(HttpMethod.DELETE, "/api/appointments/{id}").permitAll() // hủy lịch hẹn
+                        .requestMatchers(HttpMethod.GET, "/api/appointments/**").permitAll() // chi tiết lịch hẹn
+                        .requestMatchers(HttpMethod.PUT, "/api/appointments/**").permitAll() // cập nhật lịch hẹn
+                        .requestMatchers(HttpMethod.DELETE, "/api/appointments/**").permitAll() // hủy lịch hẹn
                         .requestMatchers(HttpMethod.GET, "/api/appointments/me").permitAll() // lịch hẹn của tôi
                         .requestMatchers(HttpMethod.GET, "/api/appointments/available").permitAll() // khung giờ trống
 
                         // ServiceOrderController
                         .requestMatchers(HttpMethod.GET, "/api/service-orders").permitAll() // danh sách đơn dịch vụ
                         .requestMatchers(HttpMethod.POST, "/api/service-orders").permitAll() // tạo đơn dịch vụ
-                        .requestMatchers(HttpMethod.GET, "/api/service-orders/{id}").permitAll() // chi tiết đơn dịch vụ
-                        .requestMatchers(HttpMethod.PUT, "/api/service-orders/{id}").permitAll() // cập nhật đơn dịch vụ
-                        .requestMatchers(HttpMethod.PUT, "/api/service-orders/{id}/assign").permitAll() // phân công thợ
-                        .requestMatchers(HttpMethod.PUT, "/api/service-orders/{id}/status").permitAll() // cập nhật trạng thái
+                        .requestMatchers(HttpMethod.GET, "/api/service-orders/**").permitAll() // chi tiết đơn dịch vụ
+                        .requestMatchers(HttpMethod.PUT, "/api/service-orders/**").permitAll() // cập nhật đơn dịch vụ
+                        .requestMatchers(HttpMethod.PUT, "/api/service-orders/*/assign").permitAll() // phân công thợ
+                        .requestMatchers(HttpMethod.PUT, "/api/service-orders/*/status").permitAll() // cập nhật trạng thái
                         .requestMatchers(HttpMethod.GET, "/api/service-orders/my-assignments").permitAll() // công việc được giao
 
                         .anyRequest().authenticated()

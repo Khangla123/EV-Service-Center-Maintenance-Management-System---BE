@@ -8,6 +8,7 @@ import java.util.UUID;
 @Data
 public class CreateAppointmentRequest {
     private UUID customerId;
+    private UUID vehicleId;
     private UUID serviceCenterId;
     private UUID servicePackageId;
     private LocalDateTime appointmentDate;

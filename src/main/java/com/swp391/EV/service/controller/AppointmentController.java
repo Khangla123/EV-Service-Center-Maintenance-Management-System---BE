@@ -8,6 +8,7 @@ import com.swp391.EV.service.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @Tag(name = "Appointments", description = "Quản lý lịch hẹn")
 public class AppointmentController {
 
+    @Autowired
     private final AppointmentService appointmentService;
 
     @GetMapping
@@ -35,6 +37,7 @@ public class AppointmentController {
     @Operation(summary = "Đặt lịch hẹn", description = "Tạo lịch hẹn mới")
     public ApiResponse<AppointmentResponse> createAppointment(@RequestBody CreateAppointmentRequest request) {
         AppointmentResponse response = appointmentService.createAppointment(request);
+        
         return ApiResponse.<AppointmentResponse>builder()
                 .message("Đặt lịch hẹn thành công")
                 .result(response)

@@ -7,11 +7,12 @@ import com.swp391.EV.service.exception.AppException;
 import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.Customer;
 import com.swp391.EV.service.model.Vehicle;
+import com.swp391.EV.service.model.VehicleModel;
 import com.swp391.EV.service.repository.CustomerRepository;
 import com.swp391.EV.service.repository.VehicleRepository;
+import com.swp391.EV.service.repository.VehicleModelRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,44 +25,95 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class VehicleService {
 
+    @Autowired
     private final VehicleRepository vehicleRepository;
+    @Autowired
     private final CustomerRepository customerRepository;
+    @Autowired
+    private final VehicleModelRepository vehicleModelRepository;
 
+    // Lấy danh sách xe của khách hàng (không phải loại xe)
     public List<VehicleResponse> getAllVehicles() {
         return vehicleRepository.findByIsActiveTrue().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
+    // CUSTOMER tự đăng ký xe - lấy customerId từ user đang đăng nhập
     @Transactional
-    public VehicleResponse createVehicle(CreateVehicleRequest request) {
-        // Kiểm tra customer tồn tại
-        Customer customer = customerRepository.findById(request.getCustomerId())
+    public VehicleResponse registerMyVehicle(UUID currentUserId, CreateVehicleRequest request) {
+        // Tìm customer từ userId
+        Customer customer = customerRepository.findByUserId(currentUserId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         // Kiểm tra VIN đã tồn tại chưa
         if (vehicleRepository.findByVin(request.getVin()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED); // Có thể tạo ErrorCode mới cho VIN_EXISTED
+            throw new AppException(ErrorCode.USER_EXISTED);
         }
 
         // Kiểm tra biển số đã tồn tại chưa
         if (request.getLicensePlate() != null &&
             vehicleRepository.findByLicensePlate(request.getLicensePlate()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED); // Có thể tạo ErrorCode mới cho LICENSE_PLATE_EXISTED
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        // Tìm VehicleModel nếu có vehicleModelId
+        VehicleModel vehicleModel = null;
+        if (request.getVehicleModelId() != null) {
+            vehicleModel = vehicleModelRepository.findById(request.getVehicleModelId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         }
 
         Vehicle vehicle = Vehicle.builder()
                 .customer(customer)
+                .vehicleModel(vehicleModel)
                 .vin(request.getVin())
                 .licensePlate(request.getLicensePlate())
-                .manufacturer(request.getManufacturer())
-                .model(request.getModel())
-                .year(request.getYear())
                 .color(request.getColor())
                 .purchaseDate(request.getPurchaseDate())
                 .mileage(request.getMileage() != null ? request.getMileage() : 0)
-                .batteryCapacity(request.getBatteryCapacity())
-                .rangeKm(request.getRangeKm())
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        Vehicle savedVehicle = vehicleRepository.save(vehicle);
+        return convertToResponse(savedVehicle);
+    }
+
+    // STAFF/ADMIN thêm xe cho khách hàng cụ thể
+    @Transactional
+    public VehicleResponse registerVehicleForCustomer(UUID customerId, CreateVehicleRequest request) {
+        // Kiểm tra customer tồn tại
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Kiểm tra VIN đã tồn tại chưa
+        if (vehicleRepository.findByVin(request.getVin()).isPresent()) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        // Kiểm tra biển số đã tồn tại chưa
+        if (request.getLicensePlate() != null &&
+            vehicleRepository.findByLicensePlate(request.getLicensePlate()).isPresent()) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        // Tìm VehicleModel nếu có vehicleModelId
+        VehicleModel vehicleModel = null;
+        if (request.getVehicleModelId() != null) {
+            vehicleModel = vehicleModelRepository.findById(request.getVehicleModelId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        }
+
+        Vehicle vehicle = Vehicle.builder()
+                .customer(customer)
+                .vehicleModel(vehicleModel)
+                .vin(request.getVin())
+                .licensePlate(request.getLicensePlate())
+                .color(request.getColor())
+                .purchaseDate(request.getPurchaseDate())
+                .mileage(request.getMileage() != null ? request.getMileage() : 0)
                 .isActive(true)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -85,15 +137,6 @@ public class VehicleService {
         if (request.getLicensePlate() != null) {
             vehicle.setLicensePlate(request.getLicensePlate());
         }
-        if (request.getManufacturer() != null) {
-            vehicle.setManufacturer(request.getManufacturer());
-        }
-        if (request.getModel() != null) {
-            vehicle.setModel(request.getModel());
-        }
-        if (request.getYear() != null) {
-            vehicle.setYear(request.getYear());
-        }
         if (request.getColor() != null) {
             vehicle.setColor(request.getColor());
         }
@@ -109,11 +152,10 @@ public class VehicleService {
         if (request.getNextMaintenanceDate() != null) {
             vehicle.setNextMaintenanceDate(request.getNextMaintenanceDate());
         }
-        if (request.getBatteryCapacity() != null) {
-            vehicle.setBatteryCapacity(request.getBatteryCapacity());
-        }
-        if (request.getRangeKm() != null) {
-            vehicle.setRangeKm(request.getRangeKm());
+        if (request.getVehicleModelId() != null) {
+            VehicleModel vehicleModel = vehicleModelRepository.findById(request.getVehicleModelId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+            vehicle.setVehicleModel(vehicleModel);
         }
 
         vehicle.setUpdatedAt(LocalDateTime.now());
@@ -132,39 +174,56 @@ public class VehicleService {
         vehicleRepository.save(vehicle);
     }
 
+    @Transactional(readOnly = true)
     public List<VehicleResponse> getVehiclesByCustomerId(UUID customerId) {
-        return vehicleRepository.findActiveVehiclesByCustomerId(customerId).stream()
+        List<Vehicle> vehicles = vehicleRepository.findActiveVehiclesByCustomerId(customerId);
+        
+        return vehicles.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
-    public List<VehicleResponse> getMyVehicles(UUID customerId) {
-        return getVehiclesByCustomerId(customerId);
-    }
-
-    @Transactional
-    public VehicleResponse registerVehicleForCustomer(UUID customerId, CreateVehicleRequest request) {
-        request.setCustomerId(customerId);
-        return createVehicle(request);
+    // CUSTOMER xem xe của mình
+    @Transactional(readOnly = true)
+    public List<VehicleResponse> getMyVehicles(UUID currentUserId) {
+        if (currentUserId == null) {
+            throw new AppException(ErrorCode.USER_NOT_EXISTED);
+        }
+        
+        Customer customer = customerRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        
+        return getVehiclesByCustomerId(customer.getId());
     }
 
     private VehicleResponse convertToResponse(Vehicle vehicle) {
         VehicleResponse response = new VehicleResponse();
         response.setId(vehicle.getId());
-        response.setCustomerId(vehicle.getCustomer().getId());
-        response.setCustomerName(vehicle.getCustomer().getFullName());
+
+        // Customer info
+        if (vehicle.getCustomer() != null) {
+            response.setCustomerId(vehicle.getCustomer().getId());
+            response.setCustomerName(vehicle.getCustomer().getFullName());
+        }
+
+        // VehicleModel info
+        if (vehicle.getVehicleModel() != null) {
+            response.setVehicleModelId(vehicle.getVehicleModel().getId());
+            response.setManufacturer(vehicle.getVehicleModel().getManufacturer());
+            response.setModel(vehicle.getVehicleModel().getModel());
+            response.setYear(vehicle.getVehicleModel().getYear());
+            response.setBatteryCapacity(vehicle.getVehicleModel().getBatteryCapacity());
+            response.setRangeKm(vehicle.getVehicleModel().getRangeKm());
+        }
+
         response.setVin(vehicle.getVin());
         response.setLicensePlate(vehicle.getLicensePlate());
-        response.setManufacturer(vehicle.getManufacturer());
-        response.setModel(vehicle.getModel());
-        response.setYear(vehicle.getYear());
         response.setColor(vehicle.getColor());
         response.setPurchaseDate(vehicle.getPurchaseDate());
+        response.setWarrantyExpiration(vehicle.getWarrantyExpiration());
         response.setMileage(vehicle.getMileage());
         response.setLastMaintenanceDate(vehicle.getLastMaintenanceDate());
         response.setNextMaintenanceDate(vehicle.getNextMaintenanceDate());
-        response.setBatteryCapacity(vehicle.getBatteryCapacity());
-        response.setRangeKm(vehicle.getRangeKm());
         response.setIsActive(vehicle.getIsActive());
         response.setCreatedAt(vehicle.getCreatedAt());
         response.setUpdatedAt(vehicle.getUpdatedAt());

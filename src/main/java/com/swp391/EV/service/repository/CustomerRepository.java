@@ -18,6 +18,8 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
     Optional<Customer> findByUsername(String username);
 
+    Optional<Customer> findByUserId(UUID userId); // Thêm method này
+
     @Query("SELECT c FROM Customer c WHERE " +
            "(:search IS NULL OR :search = '' OR " +
            "LOWER(c.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

@@ -8,6 +8,7 @@ import com.swp391.EV.service.service.ServiceCenterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @Tag(name = "Service Centers", description = "Quản lý trung tâm dịch vụ")
 public class ServiceCenterController {
 
+    @Autowired
     private final ServiceCenterService serviceCenterService;
 
     @GetMapping

@@ -9,6 +9,7 @@ import com.swp391.EV.service.model.*;
 import com.swp391.EV.service.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +22,17 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AppointmentService {
 
+    @Autowired
     private final ServiceAppointmentRepository appointmentRepository;
+    @Autowired
     private final CustomerRepository customerRepository;
+    @Autowired
+    private final VehicleRepository vehicleRepository;
+    @Autowired
+    private final ServiceCenterRepository serviceCenterRepository;
+    @Autowired
+    private final ServicePackageRepository servicePackageRepository;
+    @Autowired
     private final ModelMapper modelMapper;
 
     public List<AppointmentResponse> getAllAppointments() {
@@ -36,8 +46,20 @@ public class AppointmentService {
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
+        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        ServiceCenter serviceCenter = serviceCenterRepository.findById(request.getServiceCenterId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        ServicePackage servicePackage = servicePackageRepository.findById(request.getServicePackageId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
         ServiceAppointment appointment = ServiceAppointment.builder()
                 .customer(customer)
+                .vehicle(vehicle)
+                .serviceCenter(serviceCenter)
+                .servicePackage(servicePackage)
                 .appointmentDate(request.getAppointmentDate())
                 .notes(request.getNotes())
                 .status(ServiceAppointment.AppointmentStatus.PENDING)
@@ -46,6 +68,7 @@ public class AppointmentService {
                 .build();
 
         ServiceAppointment savedAppointment = appointmentRepository.save(appointment);
+        
         return convertToResponse(savedAppointment);
     }
 
@@ -102,7 +125,27 @@ public class AppointmentService {
         AppointmentResponse response = new AppointmentResponse();
         response.setId(appointment.getId());
         response.setCustomerId(appointment.getCustomer().getId());
-        response.setCustomerName(appointment.getCustomer().getFullName()); // Sửa từ getUser().getFullName()
+        response.setCustomerName(appointment.getCustomer().getFullName());
+        
+        if (appointment.getVehicle() != null) {
+            response.setVehicleId(appointment.getVehicle().getId());
+            response.setVehicleLicensePlate(appointment.getVehicle().getLicensePlate());
+
+            if (appointment.getVehicle().getVehicleModel() != null) {
+                response.setVehicleModel(appointment.getVehicle().getVehicleModel().getModel());
+            }
+        }
+        
+        if (appointment.getServiceCenter() != null) {
+            response.setServiceCenterId(appointment.getServiceCenter().getId());
+            response.setServiceCenterName(appointment.getServiceCenter().getName());
+        }
+        
+        if (appointment.getServicePackage() != null) {
+            response.setServicePackageId(appointment.getServicePackage().getId());
+            response.setServicePackageName(appointment.getServicePackage().getName());
+        }
+        
         response.setAppointmentDate(appointment.getAppointmentDate());
         response.setStatus(appointment.getStatus());
         response.setNotes(appointment.getNotes());

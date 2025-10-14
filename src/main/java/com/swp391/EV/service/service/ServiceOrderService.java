@@ -8,6 +8,7 @@ import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.*;
 import com.swp391.EV.service.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,8 +21,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ServiceOrderService {
 
+    @Autowired
     private final ServiceOrderRepository serviceOrderRepository;
+    @Autowired
     private final ServiceAppointmentRepository appointmentRepository;
+    @Autowired
     private final UserRepository userRepository;
 
     public List<ServiceOrderResponse> getAllServiceOrders() {
@@ -35,8 +39,12 @@ public class ServiceOrderService {
         ServiceAppointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        User technician = userRepository.findById(request.getTechnicianId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        // Technician có thể null khi tạo mới (chưa phân công)
+        User technician = null;
+        if (request.getTechnicianId() != null) {
+            technician = userRepository.findById(request.getTechnicianId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        }
 
         // Generate order code
         String orderCode = "SO" + System.currentTimeMillis();

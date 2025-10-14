@@ -25,6 +25,10 @@ public class ServiceAppointment {
     private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id")
+    private Vehicle vehicle;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_center_id")
     private ServiceCenter serviceCenter;
 

@@ -103,6 +103,13 @@ public class CustomerService {
         return buildCustomerProfileResponse(customer);
     }
 
+    public CustomerProfileResponse getCustomerByUserId(UUID userId) {
+        Customer customer = customerRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        
+        return buildCustomerProfileResponse(customer);
+    }
+
     @Transactional
     public CustomerResponse updateCustomer(UUID id, CustomerUpdateRequest request) {
         Customer customer = customerRepository.findById(id)

@@ -9,7 +9,9 @@ import com.swp391.EV.service.dto.response.RegisterResponse;
 import com.swp391.EV.service.exception.AppException;
 import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.User;
+import com.swp391.EV.service.model.Customer;
 import com.swp391.EV.service.repository.UserRepository;
+import com.swp391.EV.service.repository.CustomerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,9 +25,11 @@ import java.util.UUID;
 @Service
 public class UserService {
 
-
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -60,7 +64,25 @@ public class UserService {
                 .isActive(true)
                 .createdAt(java.time.OffsetDateTime.now())
                 .build();
-        userRepository.save(user);
+        user = userRepository.save(user); // FIX: Gán lại kết quả để có ID
+
+        // Tạo Customer record khi đăng ký với role customer
+        if ("customer".equals(user.getRole())) {
+            Customer customer = Customer.builder()
+                    .userId(user.getId()) // FIX: Thêm userId
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .passwordHash(user.getPasswordHash())
+                    .fullName(user.getFullName())
+                    .phone(user.getPhone())
+                    .address(user.getAddress())
+                    .role("CUSTOMER")
+                    .isActive(true)
+                    .emailVerified(false)
+                    .createdAt(user.getCreatedAt())
+                    .build();
+            customerRepository.save(customer);
+        }
 
         String token = authService.generateTokenForUser(user);
 

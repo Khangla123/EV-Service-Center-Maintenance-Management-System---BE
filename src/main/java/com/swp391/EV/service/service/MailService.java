@@ -12,6 +12,7 @@ import org.thymeleaf.context.Context;
 
 @Service
 public class MailService {
+
     @Autowired
     private TemplateEngine templateEngine;
     @Autowired

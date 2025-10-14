@@ -11,6 +11,9 @@ public class AppointmentResponse {
     private UUID id;
     private UUID customerId;
     private String customerName;
+    private UUID vehicleId;
+    private String vehicleLicensePlate;
+    private String vehicleModel;
     private UUID serviceCenterId;
     private String serviceCenterName;
     private UUID servicePackageId;
