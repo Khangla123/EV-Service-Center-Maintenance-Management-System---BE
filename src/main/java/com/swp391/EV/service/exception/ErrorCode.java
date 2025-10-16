@@ -26,7 +26,10 @@ public enum ErrorCode {
     INVALID_INPUT(1015, "Dữ liệu đầu vào không hợp lệ", HttpStatus.BAD_REQUEST),
     FORBIDDEN_ACTION(1016, "Không có quyền thực hiện hành động này", HttpStatus.FORBIDDEN),
     DATABASE_ERROR(1017, "Lỗi cơ sở dữ liệu", HttpStatus.INTERNAL_SERVER_ERROR),
-    INVALID_ROLE(1018, "Vai trò không hợp lệ", HttpStatus.BAD_REQUEST);
+    INVALID_ROLE(1018, "Vai trò không hợp lệ", HttpStatus.BAD_REQUEST),
+    SERVICE_CENTER_NOT_FOUND(1019, "Không tìm thấy trung tâm dịch vụ", HttpStatus.NOT_FOUND),
+    STAFF_NOT_FOUND(1020, "Không tìm thấy nhân viên", HttpStatus.NOT_FOUND),
+    STAFF_ALREADY_EXISTS(1021, "Nhân viên đã tồn tại", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

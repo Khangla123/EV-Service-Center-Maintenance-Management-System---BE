@@ -5,13 +5,16 @@ import com.swp391.EV.service.dto.request.CustomerCreateRequest;
 import com.swp391.EV.service.dto.request.CustomerUpdateRequest;
 import com.swp391.EV.service.dto.response.CustomerResponse;
 import com.swp391.EV.service.dto.response.CustomerProfileResponse;
+import com.swp391.EV.service.dto.response.VehicleResponse;
 import com.swp391.EV.service.service.CustomerService;
+import com.swp391.EV.service.service.VehicleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -20,6 +23,9 @@ public class CustomerController {
 
     @Autowired
     private CustomerService customerService;
+
+    @Autowired
+    private VehicleService vehicleService;
 
     @GetMapping
     ApiResponse<Page<CustomerResponse>> getAllCustomers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @RequestParam(required = false) String search) {
@@ -79,6 +85,15 @@ public class CustomerController {
         return ApiResponse.<CustomerResponse>builder()
                 .message("Cập nhật hồ sơ thành công")
                 .result(customer)
+                .build();
+    }
+
+    @GetMapping("/{customerId}/vehicles")
+    ApiResponse<List<VehicleResponse>> getCustomerVehicles(@PathVariable UUID customerId) {
+        List<VehicleResponse> vehicles = vehicleService.getVehiclesByCustomerId(customerId);
+        return ApiResponse.<List<VehicleResponse>>builder()
+                .message("Danh sách xe của khách hàng")
+                .result(vehicles)
                 .build();
     }
 }

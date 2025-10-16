@@ -113,6 +113,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/service-orders/*/status").permitAll() // cập nhật trạng thái
                         .requestMatchers(HttpMethod.GET, "/api/service-orders/my-assignments").permitAll() // công việc được giao
 
+                        // StaffController
+                        .requestMatchers(HttpMethod.GET, "/api/staff").permitAll() // danh sách nhân viên
+                        .requestMatchers(HttpMethod.POST, "/api/staff").permitAll() // thêm nhân viên mới
+                        .requestMatchers(HttpMethod.GET, "/api/staff/{id}").permitAll() // chi tiết nhân viên
+                        .requestMatchers(HttpMethod.PUT, "/api/staff/{id}").permitAll() // cập nhật nhân viên
+                        .requestMatchers(HttpMethod.DELETE, "/api/staff/{id}").permitAll() // xóa nhân viên
+                        .requestMatchers(HttpMethod.GET, "/api/staff/available").permitAll() // nhân viên rảnh
+                        .requestMatchers(HttpMethod.GET, "/api/staff/my-profile").permitAll() // hồ sơ của tôi
+                        .requestMatchers(HttpMethod.PUT, "/api/staff/my-profile").permitAll() // cập nhật hồ sơ
+
                         .anyRequest().authenticated()
                 );
 

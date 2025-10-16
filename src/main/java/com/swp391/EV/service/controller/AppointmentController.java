@@ -76,7 +76,17 @@ public class AppointmentController {
 
     @GetMapping("/me")
     @Operation(summary = "Lịch hẹn của tôi", description = "Lấy danh sách lịch hẹn của khách hàng hiện tại")
-    public ApiResponse<List<AppointmentResponse>> getMyAppointments(@RequestParam UUID customerId) {
+    public ApiResponse<List<AppointmentResponse>> getMyAppointments(
+            @RequestParam(required = false) UUID customerId) {
+        // If customerId not provided, return empty list for now
+        // TODO: Get customerId from JWT token in SecurityContext
+        if (customerId == null) {
+            return ApiResponse.<List<AppointmentResponse>>builder()
+                    .message("Customer ID is required")
+                    .result(List.of())
+                    .build();
+        }
+        
         List<AppointmentResponse> appointments = appointmentService.getAppointmentsByCustomerId(customerId);
         return ApiResponse.<List<AppointmentResponse>>builder()
                 .message("Danh sách lịch hẹn của bạn")

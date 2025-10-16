@@ -23,4 +23,12 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
 
     @Query("SELECT sa FROM ServiceAppointment sa WHERE sa.serviceCenter.id = :serviceCenterId")
     List<ServiceAppointment> findByServiceCenterId(@Param("serviceCenterId") UUID serviceCenterId);
+
+    @Query("SELECT sa FROM ServiceAppointment sa " +
+           "LEFT JOIN FETCH sa.customer " +
+           "LEFT JOIN FETCH sa.vehicle v " +
+           "LEFT JOIN FETCH v.vehicleModel " +
+           "LEFT JOIN FETCH sa.serviceCenter " +
+           "LEFT JOIN FETCH sa.servicePackage")
+    List<ServiceAppointment> findAllWithDetails();
 }

@@ -36,7 +36,7 @@ public class AppointmentService {
     private final ModelMapper modelMapper;
 
     public List<AppointmentResponse> getAllAppointments() {
-        return appointmentRepository.findAll().stream()
+        return appointmentRepository.findAllWithDetails().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
@@ -124,26 +124,52 @@ public class AppointmentService {
     private AppointmentResponse convertToResponse(ServiceAppointment appointment) {
         AppointmentResponse response = new AppointmentResponse();
         response.setId(appointment.getId());
-        response.setCustomerId(appointment.getCustomer().getId());
-        response.setCustomerName(appointment.getCustomer().getFullName());
+        
+        // Handle customer with null safety
+        if (appointment.getCustomer() != null) {
+            try {
+                response.setCustomerId(appointment.getCustomer().getId());
+                response.setCustomerName(appointment.getCustomer().getFullName());
+            } catch (Exception e) {
+                // Handle lazy loading exception
+                response.setCustomerId(null);
+                response.setCustomerName("Unknown");
+            }
+        }
         
         if (appointment.getVehicle() != null) {
-            response.setVehicleId(appointment.getVehicle().getId());
-            response.setVehicleLicensePlate(appointment.getVehicle().getLicensePlate());
+            try {
+                UUID vehicleId = appointment.getVehicle().getId();
+                response.setVehicleId(vehicleId);
+                response.setVehicleLicensePlate(appointment.getVehicle().getLicensePlate());
 
-            if (appointment.getVehicle().getVehicleModel() != null) {
-                response.setVehicleModel(appointment.getVehicle().getVehicleModel().getModel());
+                if (appointment.getVehicle().getVehicleModel() != null) {
+                    response.setVehicleModel(appointment.getVehicle().getVehicleModel().getModel());
+                }
+            } catch (Exception e) {
+                // Handle lazy loading exception
+                response.setVehicleId(null);
             }
         }
         
         if (appointment.getServiceCenter() != null) {
-            response.setServiceCenterId(appointment.getServiceCenter().getId());
-            response.setServiceCenterName(appointment.getServiceCenter().getName());
+            try {
+                response.setServiceCenterId(appointment.getServiceCenter().getId());
+                response.setServiceCenterName(appointment.getServiceCenter().getName());
+            } catch (Exception e) {
+                // Handle lazy loading exception
+                response.setServiceCenterId(null);
+            }
         }
         
         if (appointment.getServicePackage() != null) {
-            response.setServicePackageId(appointment.getServicePackage().getId());
-            response.setServicePackageName(appointment.getServicePackage().getName());
+            try {
+                response.setServicePackageId(appointment.getServicePackage().getId());
+                response.setServicePackageName(appointment.getServicePackage().getName());
+            } catch (Exception e) {
+                // Handle lazy loading exception
+                response.setServicePackageId(null);
+            }
         }
         
         response.setAppointmentDate(appointment.getAppointmentDate());
