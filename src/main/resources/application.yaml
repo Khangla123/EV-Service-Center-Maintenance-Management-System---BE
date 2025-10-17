@@ -32,7 +32,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: eschoolmed391@gmail.com
-    password: "raef qciq wrvn ipxh"
+    password: raef qciq wrvn ipxh
     default-encoding: UTF-8
     protocol: smtp
     test-connection: false
@@ -48,6 +48,17 @@ spring:
 jwt:
   signer-key: HJ4ppveef04BKJzTq+dyLhRdicqYiQWxaSqTLiTUxksDu4zMs/NLfrJsbHz+4OiB
   expiration-duration: 86400
+
+# VNPay Payment Gateway Configuration
+vnpay:
+  vnp-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  return-url: http://localhost:3000/payment/callback
+  tmn-code: DEMOMERCHANT
+  secret-key: RAOEXHYVSDDIIENYWSLDIIZTANXUXZFJ
+  version: 2.1.0
+  command: pay
+  order-type: other
+  timeout-minutes: 15
 
 springdoc:
   api-docs:

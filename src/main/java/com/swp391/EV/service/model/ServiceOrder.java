@@ -30,7 +30,7 @@ public class ServiceOrder {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "technician_id")
-    private User technician;
+    private Staff technician;  // Sửa từ User thành Staff
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

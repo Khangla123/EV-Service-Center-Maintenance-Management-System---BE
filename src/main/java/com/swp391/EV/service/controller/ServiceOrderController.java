@@ -34,8 +34,14 @@ public class ServiceOrderController {
                 .build();
     }
 
+    /**
+     * ENDPOINT DÀNH CHO STAFF - Tạo đơn dịch vụ trực tiếp
+     * Staff có thể tạo service order trực tiếp mà không cần qua appointment
+     */
     @PostMapping
-    @Operation(summary = "Tạo đơn dịch vụ", description = "Tạo đơn dịch vụ mới từ lịch hẹn")
+    @Operation(summary = "Tạo đơn dịch vụ trực tiếp [STAFF]",
+               description = "Staff tạo đơn dịch vụ trực tiếp từ appointment. " +
+                            "Dùng khi staff muốn tạo order thủ công, không qua flow confirm.")
     public ApiResponse<ServiceOrderResponse> createServiceOrder(@RequestBody CreateServiceOrderRequest request) {
         ServiceOrderResponse response = serviceOrderService.createServiceOrder(request);
         return ApiResponse.<ServiceOrderResponse>builder()
@@ -66,7 +72,8 @@ public class ServiceOrderController {
     }
 
     @PutMapping("/{id}/assign")
-    @Operation(summary = "Phân công thợ", description = "Phân công kỹ thuật viên cho đơn dịch vụ")
+    @Operation(summary = "Phân công lại thợ",
+               description = "Phân công lại kỹ thuật viên cho đơn dịch vụ ĐÃ TỒN TẠI (không tạo mới)")
     public ApiResponse<ServiceOrderResponse> assignTechnician(@PathVariable UUID id,
                                                             @RequestParam UUID technicianId) {
         ServiceOrderResponse response = serviceOrderService.assignTechnician(id, technicianId);
@@ -94,6 +101,24 @@ public class ServiceOrderController {
         return ApiResponse.<List<ServiceOrderResponse>>builder()
                 .message("Danh sách công việc của bạn")
                 .result(tasks)
+                .build();
+    }
+
+    /**
+     * ENDPOINT THEO FLOW CHUẨN - Từ Appointment đã CONFIRMED
+     * Flow: Customer đặt lịch → Staff xác nhận → Phân công thợ (endpoint này) → Tạo Service Order
+     */
+    @PostMapping("/from-appointment/{appointmentId}/assign")
+    @Operation(summary = "Phân công thợ và tạo đơn dịch vụ [FLOW CHUẨN]",
+               description = "Từ lịch hẹn đã CONFIRMED của customer, phân công kỹ thuật viên và tạo đơn dịch vụ mới. " +
+                            "Flow: Customer đặt lịch → Staff confirm → Staff phân công thợ (API này) → Tạo Service Order")
+    public ApiResponse<ServiceOrderResponse> createServiceOrderAndAssign(
+            @PathVariable UUID appointmentId,
+            @RequestParam UUID technicianId) {
+        ServiceOrderResponse response = serviceOrderService.createServiceOrderFromAppointment(appointmentId, technicianId);
+        return ApiResponse.<ServiceOrderResponse>builder()
+                .message("Phân công kỹ thuật viên và tạo đơn dịch vụ thành công")
+                .result(response)
                 .build();
     }
 }

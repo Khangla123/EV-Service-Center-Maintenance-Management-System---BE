@@ -89,6 +89,7 @@ public class StaffService {
         return mapToResponse(staff);
     }
 
+    @Transactional(readOnly = true)
     public List<StaffResponse> getAllStaff() {
         List<Staff> staffList = staffRepository.findAllStaffAndTechnicians();
         return staffList.stream()
@@ -96,6 +97,7 @@ public class StaffService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public StaffResponse getStaffById(UUID id) {
         Staff staff = staffRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -154,6 +156,7 @@ public class StaffService {
         userRepository.save(user);
     }
 
+    @Transactional(readOnly = true)
     public List<StaffResponse> getAvailableStaff() {
         List<Staff> staffList = staffRepository.findByIsAvailable(true);
         return staffList.stream()
@@ -162,6 +165,7 @@ public class StaffService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public StaffResponse getMyProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();

@@ -4,6 +4,7 @@ import com.swp391.EV.service.dto.ApiResponse;
 import com.swp391.EV.service.dto.request.CreateAppointmentRequest;
 import com.swp391.EV.service.dto.request.UpdateAppointmentRequest;
 import com.swp391.EV.service.dto.response.AppointmentResponse;
+import com.swp391.EV.service.model.ServiceAppointment;
 import com.swp391.EV.service.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -101,6 +102,42 @@ public class AppointmentController {
         return ApiResponse.<List<AppointmentResponse>>builder()
                 .message("Danh sách khung giờ trống")
                 .result(timeSlots)
+                .build();
+    }
+
+    @PutMapping("/{id}/confirm")
+    @Operation(summary = "Xác nhận lịch hẹn",
+               description = "Staff xác nhận lịch hẹn (PENDING -> CONFIRMED)")
+    public ApiResponse<AppointmentResponse> confirmAppointment(@PathVariable UUID id) {
+        AppointmentResponse response = appointmentService.confirmAppointment(id);
+        return ApiResponse.<AppointmentResponse>builder()
+                .message("Xác nhận lịch hẹn thành công")
+                .result(response)
+                .build();
+    }
+
+    @PutMapping("/{id}/cancel")
+    @Operation(summary = "Hủy lịch hẹn",
+               description = "Staff hủy lịch hẹn với lý do")
+    public ApiResponse<AppointmentResponse> cancelAppointment(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        AppointmentResponse response = appointmentService.cancelAppointment(id, reason);
+        return ApiResponse.<AppointmentResponse>builder()
+                .message("Hủy lịch hẹn thành công")
+                .result(response)
+                .build();
+    }
+
+    @GetMapping("/by-status")
+    @Operation(summary = "Lọc lịch hẹn theo trạng thái",
+               description = "Lấy danh sách lịch hẹn theo trạng thái (PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED)")
+    public ApiResponse<List<AppointmentResponse>> getAppointmentsByStatus(
+            @RequestParam ServiceAppointment.AppointmentStatus status) {
+        List<AppointmentResponse> appointments = appointmentService.getAppointmentsByStatus(status);
+        return ApiResponse.<List<AppointmentResponse>>builder()
+                .message("Danh sách lịch hẹn " + status)
+                .result(appointments)
                 .build();
     }
 }

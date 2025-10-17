@@ -121,6 +121,55 @@ public class AppointmentService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Staff xác nhận lịch hẹn (PENDING -> CONFIRMED)
+     */
+    @Transactional
+    public AppointmentResponse confirmAppointment(UUID appointmentId) {
+        ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
+
+        // Kiểm tra trạng thái hiện tại
+        if (appointment.getStatus() != ServiceAppointment.AppointmentStatus.PENDING) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // Cập nhật trạng thái thành CONFIRMED
+        appointment.setStatus(ServiceAppointment.AppointmentStatus.CONFIRMED);
+        appointment.setUpdatedAt(LocalDateTime.now());
+
+        ServiceAppointment confirmedAppointment = appointmentRepository.save(appointment);
+        return convertToResponse(confirmedAppointment);
+    }
+
+    /**
+     * Lấy danh sách appointments theo status
+     */
+    public List<AppointmentResponse> getAppointmentsByStatus(ServiceAppointment.AppointmentStatus status) {
+        return appointmentRepository.findByStatus(status).stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Staff hủy lịch hẹn
+     */
+    @Transactional
+    public AppointmentResponse cancelAppointment(UUID appointmentId, String reason) {
+        ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
+
+        // Cập nhật trạng thái thành CANCELLED
+        appointment.setStatus(ServiceAppointment.AppointmentStatus.CANCELLED);
+        if (reason != null && !reason.isEmpty()) {
+            appointment.setNotes(appointment.getNotes() + " | Lý do hủy: " + reason);
+        }
+        appointment.setUpdatedAt(LocalDateTime.now());
+
+        ServiceAppointment cancelledAppointment = appointmentRepository.save(appointment);
+        return convertToResponse(cancelledAppointment);
+    }
+
     private AppointmentResponse convertToResponse(ServiceAppointment appointment) {
         AppointmentResponse response = new AppointmentResponse();
         response.setId(appointment.getId());

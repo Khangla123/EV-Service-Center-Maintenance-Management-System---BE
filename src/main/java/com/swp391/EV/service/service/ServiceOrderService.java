@@ -8,7 +8,6 @@ import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.*;
 import com.swp391.EV.service.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,12 +20,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ServiceOrderService {
 
-    @Autowired
     private final ServiceOrderRepository serviceOrderRepository;
-    @Autowired
     private final ServiceAppointmentRepository appointmentRepository;
-    @Autowired
-    private final UserRepository userRepository;
+    private final StaffRepository staffRepository;
 
     public List<ServiceOrderResponse> getAllServiceOrders() {
         return serviceOrderRepository.findAll().stream()
@@ -34,16 +30,20 @@ public class ServiceOrderService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * DÀNH CHO STAFF - Tạo đơn dịch vụ trực tiếp từ appointment
+     * Staff có thể tạo service order trực tiếp mà không cần qua flow confirm của customer
+     */
     @Transactional
     public ServiceOrderResponse createServiceOrder(CreateServiceOrderRequest request) {
         ServiceAppointment appointment = appointmentRepository.findById(request.getAppointmentId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
 
-        // Technician có thể null khi tạo mới (chưa phân công)
-        User technician = null;
+        // Technician co the null khi tao moi (chua phan cong)
+        Staff technician = null;
         if (request.getTechnicianId() != null) {
-            technician = userRepository.findById(request.getTechnicianId())
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+            technician = staffRepository.findById(request.getTechnicianId())
+                    .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
         }
 
         // Generate order code
@@ -64,21 +64,21 @@ public class ServiceOrderService {
 
     public ServiceOrderResponse getServiceOrderById(UUID id) {
         ServiceOrder serviceOrder = serviceOrderRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         return convertToResponse(serviceOrder);
     }
 
     @Transactional
     public ServiceOrderResponse updateServiceOrder(UUID id, UpdateServiceOrderRequest request) {
         ServiceOrder serviceOrder = serviceOrderRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
 
         if (request.getStatus() != null) {
             serviceOrder.setStatus(request.getStatus());
         }
         if (request.getTechnicianId() != null) {
-            User technician = userRepository.findById(request.getTechnicianId())
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+            Staff technician = staffRepository.findById(request.getTechnicianId())
+                    .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
             serviceOrder.setTechnician(technician);
         }
         if (request.getStartTime() != null) {
@@ -105,13 +105,18 @@ public class ServiceOrderService {
         return convertToResponse(updatedOrder);
     }
 
+    /**
+     * Phân công lại technician cho service order đã tồn tại
+     * Chỉ dùng để thay đổi technician, KHÔNG tạo service order mới
+     */
     @Transactional
     public ServiceOrderResponse assignTechnician(UUID orderId, UUID technicianId) {
         ServiceOrder serviceOrder = serviceOrderRepository.findById(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
 
-        User technician = userRepository.findById(technicianId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        // Lấy thông tin kỹ thuật viên từ bảng staff
+        Staff technician = staffRepository.findById(technicianId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
 
         serviceOrder.setTechnician(technician);
         serviceOrder.setUpdatedAt(LocalDateTime.now());
@@ -123,7 +128,7 @@ public class ServiceOrderService {
     @Transactional
     public ServiceOrderResponse updateStatus(UUID orderId, ServiceOrder.ServiceStatus status) {
         ServiceOrder serviceOrder = serviceOrderRepository.findById(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
 
         serviceOrder.setStatus(status);
         serviceOrder.setUpdatedAt(LocalDateTime.now());
@@ -145,6 +150,51 @@ public class ServiceOrderService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Tạo Service Order từ Appointment và phân công Technician ngay
+     * Đây là flow chính: Appointment (CONFIRMED) -> Phân công thợ -> Tạo Service Order
+     */
+    @Transactional
+    public ServiceOrderResponse createServiceOrderFromAppointment(UUID appointmentId, UUID technicianId) {
+        // 1. Kiểm tra Appointment có tồn tại và đã CONFIRMED chưa
+        ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
+
+        // 2. Kiểm tra appointment đã được xác nhận chưa
+        if (appointment.getStatus() != ServiceAppointment.AppointmentStatus.CONFIRMED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // 3. Kiểm tra appointment đã có service order chưa (tránh tạo trùng)
+        if (serviceOrderRepository.findByAppointmentId(appointmentId).isPresent()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // 4. Lấy thông tin kỹ thuật viên
+        Staff technician = staffRepository.findById(technicianId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        // 5. Tạo Service Order mới với technician đã được phân công
+        String orderCode = "SO" + System.currentTimeMillis();
+
+        ServiceOrder serviceOrder = ServiceOrder.builder()
+                .appointment(appointment)
+                .orderCode(orderCode)
+                .technician(technician)
+                .status(ServiceOrder.ServiceStatus.WAITING)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
+
+        // 6. Cập nhật trạng thái appointment thành IN_PROGRESS
+        appointment.setStatus(ServiceAppointment.AppointmentStatus.IN_PROGRESS);
+        appointmentRepository.save(appointment);
+
+        return convertToResponse(savedOrder);
+    }
+
     private ServiceOrderResponse convertToResponse(ServiceOrder serviceOrder) {
         ServiceOrderResponse response = new ServiceOrderResponse();
         response.setId(serviceOrder.getId());
@@ -152,7 +202,10 @@ public class ServiceOrderService {
         response.setOrderCode(serviceOrder.getOrderCode());
         if (serviceOrder.getTechnician() != null) {
             response.setTechnicianId(serviceOrder.getTechnician().getId());
-            response.setTechnicianName(serviceOrder.getTechnician().getFullName());
+            // Lay ten tu bang staff -> user
+            if (serviceOrder.getTechnician().getUser() != null) {
+                response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
+            }
         }
         response.setStatus(serviceOrder.getStatus());
         response.setStartTime(serviceOrder.getStartTime());

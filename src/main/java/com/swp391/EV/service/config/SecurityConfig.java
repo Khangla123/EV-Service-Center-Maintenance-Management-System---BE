@@ -123,6 +123,31 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/staff/my-profile").permitAll() // hồ sơ của tôi
                         .requestMatchers(HttpMethod.PUT, "/api/staff/my-profile").permitAll() // cập nhật hồ sơ
 
+                        // PartController - Quản lý phụ tùng
+                        .requestMatchers(HttpMethod.GET, "/api/parts").permitAll() // danh sách phụ tùng
+                        .requestMatchers(HttpMethod.POST, "/api/parts").permitAll() // thêm phụ tùng mới
+                        .requestMatchers(HttpMethod.GET, "/api/parts/{id}").permitAll() // chi tiết phụ tùng
+                        .requestMatchers(HttpMethod.PUT, "/api/parts/{id}").permitAll() // cập nhật phụ tùng
+                        .requestMatchers(HttpMethod.DELETE, "/api/parts/{id}").permitAll() // xóa phụ tùng
+                        .requestMatchers(HttpMethod.GET, "/api/parts/low-stock").permitAll() // phụ tùng sắp hết
+                        .requestMatchers(HttpMethod.POST, "/api/parts/{id}/restock").permitAll() // nhập kho phụ tùng
+
+                        // InvoiceController - Quản lý hóa đơn
+                        .requestMatchers(HttpMethod.GET, "/api/invoices").permitAll() // danh sách hóa đơn
+                        .requestMatchers(HttpMethod.POST, "/api/invoices").permitAll() // tạo hóa đơn
+                        .requestMatchers(HttpMethod.GET, "/api/invoices/{id}").permitAll() // chi tiết hóa đơn
+                        .requestMatchers(HttpMethod.PUT, "/api/invoices/{id}").permitAll() // cập nhật hóa đơn
+                        .requestMatchers(HttpMethod.GET, "/api/invoices/me").permitAll() // hóa đơn của tôi
+
+                        // PaymentController - Quản lý thanh toán
+                        .requestMatchers(HttpMethod.GET, "/api/payments").permitAll() // danh sách thanh toán
+                        .requestMatchers(HttpMethod.POST, "/api/payments").permitAll() // thanh toán
+                        .requestMatchers(HttpMethod.GET, "/api/payments/{id}").permitAll() // chi tiết thanh toán
+                        .requestMatchers(HttpMethod.PUT, "/api/payments/{id}/verify").permitAll() // xác nhận thanh toán
+                        .requestMatchers(HttpMethod.GET, "/api/payments/methods").permitAll() // phương thức thanh toán
+                        .requestMatchers(HttpMethod.POST, "/api/payments/vnpay/create").permitAll() // tạo URL thanh toán VNPay
+                        .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/callback").permitAll() // VNPay callback
+
                         .anyRequest().authenticated()
                 );
 
