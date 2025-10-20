@@ -66,11 +66,8 @@ public class CustomerController {
 
     @GetMapping("/me")
     ApiResponse<CustomerProfileResponse> getMyProfile(org.springframework.security.core.Authentication authentication) {
-        // Lấy userId từ JWT token
         String userIdString = authentication != null ? authentication.getName() : null;
         UUID userId = userIdString != null ? UUID.fromString(userIdString) : null;
-        
-        // Tìm customer theo userId
         CustomerProfileResponse profile = customerService.getCustomerByUserId(userId);
         
         return ApiResponse.<CustomerProfileResponse>builder()

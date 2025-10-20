@@ -148,6 +148,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/payments/vnpay/create").permitAll() // tạo URL thanh toán VNPay
                         .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/callback").permitAll() // VNPay callback
 
+                        // MaintenanceHistoryController - Lịch sử bảo dưỡng
+                        .requestMatchers(HttpMethod.GET, "/api/maintenance-history").permitAll() // lịch sử bảo dưỡng
+                        .requestMatchers(HttpMethod.POST, "/api/maintenance-history/filter").permitAll() // lọc lịch sử bảo dưỡng
+
                         .anyRequest().authenticated()
                 );
 

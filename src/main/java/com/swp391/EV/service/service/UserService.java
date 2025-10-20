@@ -60,16 +60,15 @@ public class UserService {
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .address(request.getAddress())
-                .role("customer")
+                .role("CUSTOMER")
                 .isActive(true)
                 .createdAt(java.time.OffsetDateTime.now())
                 .build();
-        user = userRepository.save(user); // FIX: Gán lại kết quả để có ID
+        user = userRepository.save(user);
 
-        // Tạo Customer record khi đăng ký với role customer
         if ("customer".equals(user.getRole())) {
             Customer customer = Customer.builder()
-                    .userId(user.getId()) // FIX: Thêm userId
+                    .userId(user.getId())
                     .username(user.getUsername())
                     .email(user.getEmail())
                     .passwordHash(user.getPasswordHash())
@@ -205,6 +204,6 @@ public class UserService {
     }
 
     private boolean isValidRole(String role) {
-        return role.equals("admin") || role.equals("customer") || role.equals("technician") || role.equals("staff");
+        return role.equals("ADMIN") || role.equals("CUSTOMER") || role.equals("TECHNICIAN") || role.equals("STAFF");
     }
 }
