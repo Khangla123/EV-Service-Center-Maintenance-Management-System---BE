@@ -13,7 +13,15 @@ import java.util.UUID;
 @Repository
 public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppointment, UUID> {
 
-    List<ServiceAppointment> findByCustomerId(UUID customerId);
+    @Query("SELECT sa FROM ServiceAppointment sa " +
+           "LEFT JOIN FETCH sa.customer " +
+           "LEFT JOIN FETCH sa.vehicle v " +
+           "LEFT JOIN FETCH v.vehicleModel " +
+           "LEFT JOIN FETCH sa.serviceCenter " +
+           "LEFT JOIN FETCH sa.servicePackage " +
+           "WHERE sa.customer.id = :customerId " +
+           "ORDER BY sa.appointmentDate DESC")
+    List<ServiceAppointment> findByCustomerId(@Param("customerId") UUID customerId);
 
     List<ServiceAppointment> findByStatus(ServiceAppointment.AppointmentStatus status);
 

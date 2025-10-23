@@ -24,6 +24,16 @@ public class MaintenanceHistoryController {
 
     private final MaintenanceHistoryService maintenanceHistoryService;
 
+    @GetMapping("/test")
+    @Operation(summary = "Test endpoint", description = "Test if controller is loaded")
+    public ApiResponse<String> testEndpoint() {
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("MaintenanceHistoryController is working!")
+                .result("Endpoint is accessible")
+                .build();
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('CUSTOMER')")
     @Operation(summary = "Get maintenance history", description = "Get maintenance history for authenticated customer with optional filters")
