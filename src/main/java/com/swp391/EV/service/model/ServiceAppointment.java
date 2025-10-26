@@ -36,6 +36,10 @@ public class ServiceAppointment {
     @JoinColumn(name = "service_package_id")
     private ServicePackage servicePackage;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "technician_id")
+    private Staff technician;
+
     @Column(name = "appointment_date", nullable = false)
     private LocalDateTime appointmentDate;
 

@@ -140,4 +140,15 @@ public class AppointmentController {
                 .result(appointments)
                 .build();
     }
+
+    @GetMapping("/my-tasks")
+    @Operation(summary = "Công việc của tôi", 
+               description = "Lấy danh sách công việc được phân công cho technician hiện tại")
+    public ApiResponse<List<AppointmentResponse>> getMyTasks(@RequestParam UUID technicianId) {
+        List<AppointmentResponse> appointments = appointmentService.getAppointmentsByTechnicianId(technicianId);
+        return ApiResponse.<List<AppointmentResponse>>builder()
+                .message("Danh sách công việc của bạn")
+                .result(appointments)
+                .build();
+    }
 }

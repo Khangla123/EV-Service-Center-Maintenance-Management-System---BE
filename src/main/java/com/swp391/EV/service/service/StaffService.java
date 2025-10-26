@@ -10,6 +10,7 @@ import com.swp391.EV.service.model.ServiceCenter;
 import com.swp391.EV.service.model.Staff;
 import com.swp391.EV.service.model.User;
 import com.swp391.EV.service.repository.ServiceCenterRepository;
+import com.swp391.EV.service.repository.ServiceAppointmentRepository;
 import com.swp391.EV.service.repository.StaffRepository;
 import com.swp391.EV.service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -31,6 +33,7 @@ public class StaffService {
     private final StaffRepository staffRepository;
     private final UserRepository userRepository;
     private final ServiceCenterRepository serviceCenterRepository;
+    private final ServiceAppointmentRepository appointmentRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -212,6 +215,23 @@ public class StaffService {
         return mapToResponse(staff);
     }
 
+    @Transactional(readOnly = true)
+    public boolean isStaffAvailable(UUID staffId, LocalDateTime appointmentDate) {
+        System.out.println("Checking availability for staff: " + staffId);
+        System.out.println("Appointment date: " + appointmentDate);
+        
+        long conflictCount = appointmentRepository.countConflictingAppointments(
+                staffId,
+                appointmentDate
+        );
+        
+        System.out.println("Conflicting appointments count: " + conflictCount);
+        boolean isAvailable = conflictCount == 0;
+        System.out.println("Is available: " + isAvailable);
+        
+        return isAvailable;
+    }
+
     private String generateStaffCode(String role) {
         String prefix = role.equals("TECHNICIAN") ? "TECH" : "STAFF";
         long count = staffRepository.count() + 1;
@@ -220,6 +240,10 @@ public class StaffService {
 
     private StaffResponse mapToResponse(Staff staff) {
         User user = staff.getUser();
+        
+        // Calculate current real-time status
+        String currentStatus = calculateCurrentStatus(staff);
+        
         return StaffResponse.builder()
                 .id(staff.getId())
                 .userId(user.getId())
@@ -236,7 +260,36 @@ public class StaffService {
                 .salary(staff.getSalary())
                 .isAvailable(staff.getIsAvailable())
                 .isActive(user.isActive())
+                .currentStatus(currentStatus)
                 .createdAt(staff.getCreatedAt())
                 .build();
+    }
+    
+    private String calculateCurrentStatus(Staff staff) {
+        // Check if user is active
+        if (!staff.getUser().isActive()) {
+            return "INACTIVE";
+        }
+        
+        // Check if staff has any active appointments in the current time window (±1 hour)
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oneHourAgo = now.minusHours(1);
+        LocalDateTime oneHourLater = now.plusHours(1);
+        
+        long activeAppointments = appointmentRepository.findAll().stream()
+                .filter(appointment -> {
+                    if (appointment.getTechnician() == null) return false;
+                    if (!appointment.getTechnician().getId().equals(staff.getId())) return false;
+                    
+                    String status = appointment.getStatus().name();
+                    if (status.equals("CANCELLED") || status.equals("COMPLETED")) return false;
+                    
+                    LocalDateTime apptDate = appointment.getAppointmentDate();
+                    // Check if appointment is within ±1 hour window
+                    return !apptDate.isBefore(oneHourAgo) && !apptDate.isAfter(oneHourLater);
+                })
+                .count();
+        
+        return activeAppointments > 0 ? "BUSY" : "AVAILABLE";
     }
 }

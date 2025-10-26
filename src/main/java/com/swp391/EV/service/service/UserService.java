@@ -65,7 +65,9 @@ public class UserService {
                 .build();
         user = userRepository.save(user);
 
-        if ("customer".equals(user.getRole())) {
+        // Tự động tạo Customer record cho user có role CUSTOMER
+        
+        if ("CUSTOMER".equalsIgnoreCase(user.getRole())) {
             Customer customer = Customer.builder()
                     .userId(user.getId())
                     .username(user.getUsername())

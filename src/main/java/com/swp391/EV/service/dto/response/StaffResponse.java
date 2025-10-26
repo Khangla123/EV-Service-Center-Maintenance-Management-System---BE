@@ -30,6 +30,7 @@ public class StaffResponse {
     private BigDecimal salary;
     private Boolean isAvailable;
     private Boolean isActive;
+    private String currentStatus; // "AVAILABLE", "BUSY", "INACTIVE"
     private OffsetDateTime createdAt;
 }
 
