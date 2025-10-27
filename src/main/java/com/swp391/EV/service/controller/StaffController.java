@@ -9,8 +9,10 @@ import com.swp391.EV.service.service.StaffService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -98,6 +100,18 @@ public class StaffController {
         return ApiResponse.<StaffResponse>builder()
                 .message("Cập nhật hồ sơ thành công.")
                 .result(response)
+                .build();
+    }
+
+    @GetMapping("/{id}/availability")
+    @Operation(summary = "Kiểm tra lịch bận", description = "Check if technician is available at specific time")
+    public ApiResponse<Boolean> checkAvailability(
+            @PathVariable UUID id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime appointmentDate) {
+        boolean isAvailable = staffService.isStaffAvailable(id, appointmentDate);
+        return ApiResponse.<Boolean>builder()
+                .message(isAvailable ? "Kỹ thuật viên rảnh." : "Kỹ thuật viên đang bận.")
+                .result(isAvailable)
                 .build();
     }
 }

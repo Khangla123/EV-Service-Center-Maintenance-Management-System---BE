@@ -33,6 +33,8 @@ public class AppointmentService {
     @Autowired
     private final ServicePackageRepository servicePackageRepository;
     @Autowired
+    private final StaffRepository staffRepository;
+    @Autowired
     private final ModelMapper modelMapper;
 
     public List<AppointmentResponse> getAllAppointments() {
@@ -87,10 +89,41 @@ public class AppointmentService {
             appointment.setAppointmentDate(request.getAppointmentDate());
         }
         if (request.getStatus() != null) {
-            appointment.setStatus(request.getStatus());
+            ServiceAppointment.AppointmentStatus oldStatus = appointment.getStatus();
+            ServiceAppointment.AppointmentStatus newStatus = request.getStatus();
+            
+            appointment.setStatus(newStatus);
+            
+            // Tự động set estimatedCompletion khi chuyển sang IN_PROGRESS
+            if (newStatus == ServiceAppointment.AppointmentStatus.IN_PROGRESS 
+                && oldStatus != ServiceAppointment.AppointmentStatus.IN_PROGRESS
+                && appointment.getEstimatedCompletion() == null) {
+                
+                // Tính thời gian dự kiến hoàn thành dựa trên service package duration
+                LocalDateTime estimatedTime = LocalDateTime.now();
+                if (appointment.getServicePackage() != null 
+                    && appointment.getServicePackage().getDurationMinutes() != null) {
+                    estimatedTime = estimatedTime.plusMinutes(appointment.getServicePackage().getDurationMinutes());
+                } else {
+                    // Mặc định 120 phút (2 giờ) nếu không có duration
+                    estimatedTime = estimatedTime.plusMinutes(120);
+                }
+                appointment.setEstimatedCompletion(estimatedTime);
+            }
+            
+            // Set actualCompletion khi hoàn thành
+            if (newStatus == ServiceAppointment.AppointmentStatus.COMPLETED 
+                && appointment.getActualCompletion() == null) {
+                appointment.setActualCompletion(LocalDateTime.now());
+            }
         }
         if (request.getNotes() != null) {
             appointment.setNotes(request.getNotes());
+        }
+        if (request.getTechnicianId() != null) {
+            Staff technician = staffRepository.findById(request.getTechnicianId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            appointment.setTechnician(technician);
         }
         if (request.getEstimatedCompletion() != null) {
             appointment.setEstimatedCompletion(request.getEstimatedCompletion());
@@ -152,6 +185,16 @@ public class AppointmentService {
     }
 
     /**
+     * Lấy danh sách appointments theo technician ID
+     */
+    public List<AppointmentResponse> getAppointmentsByTechnicianId(UUID technicianId) {
+        // Use dedicated query to filter by technician ID at database level
+        return appointmentRepository.findByTechnicianIdWithDetails(technicianId).stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Staff hủy lịch hẹn
      */
     @Transactional
@@ -179,10 +222,12 @@ public class AppointmentService {
             try {
                 response.setCustomerId(appointment.getCustomer().getId());
                 response.setCustomerName(appointment.getCustomer().getFullName());
+                response.setCustomerPhone(appointment.getCustomer().getPhone());
             } catch (Exception e) {
                 // Handle lazy loading exception
                 response.setCustomerId(null);
                 response.setCustomerName("Unknown");
+                response.setCustomerPhone(null);
             }
         }
         
@@ -218,6 +263,19 @@ public class AppointmentService {
             } catch (Exception e) {
                 // Handle lazy loading exception
                 response.setServicePackageId(null);
+            }
+        }
+        
+        // Map technician information
+        if (appointment.getTechnician() != null) {
+            try {
+                response.setTechnicianId(appointment.getTechnician().getId());
+                if (appointment.getTechnician().getUser() != null) {
+                    response.setTechnicianName(appointment.getTechnician().getUser().getFullName());
+                }
+            } catch (Exception e) {
+                // Handle lazy loading exception
+                response.setTechnicianId(null);
             }
         }
         
