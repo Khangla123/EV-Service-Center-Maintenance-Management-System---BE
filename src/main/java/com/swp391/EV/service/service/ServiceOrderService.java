@@ -40,10 +40,11 @@ public class ServiceOrderService {
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
 
         // Technician co the null khi tao moi (chua phan cong)
-        Staff technician = null;
+        User technicianUser = null;
         if (request.getTechnicianId() != null) {
-            technician = staffRepository.findById(request.getTechnicianId())
+            Staff technician = staffRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+            technicianUser = technician.getUser(); // Lấy User từ Staff
         }
 
         // Generate order code
@@ -52,7 +53,7 @@ public class ServiceOrderService {
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
-                .technician(technician)
+                .technician(technicianUser) // Lưu User thay vì Staff
                 .status(ServiceOrder.ServiceStatus.WAITING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -79,7 +80,7 @@ public class ServiceOrderService {
         if (request.getTechnicianId() != null) {
             Staff technician = staffRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-            serviceOrder.setTechnician(technician);
+            serviceOrder.setTechnician(technician.getUser()); // Lưu User thay vì Staff
         }
         if (request.getStartTime() != null) {
             serviceOrder.setStartTime(request.getStartTime());
@@ -118,7 +119,7 @@ public class ServiceOrderService {
         Staff technician = staffRepository.findById(technicianId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
 
-        serviceOrder.setTechnician(technician);
+        serviceOrder.setTechnician(technician.getUser()); // Lưu User thay vì Staff
         serviceOrder.setUpdatedAt(LocalDateTime.now());
 
         ServiceOrder updatedOrder = serviceOrderRepository.save(serviceOrder);
@@ -180,7 +181,7 @@ public class ServiceOrderService {
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
-                .technician(technician)
+                .technician(technician.getUser()) // Lưu User thay vì Staff
                 .status(ServiceOrder.ServiceStatus.WAITING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -202,10 +203,8 @@ public class ServiceOrderService {
         response.setOrderCode(serviceOrder.getOrderCode());
         if (serviceOrder.getTechnician() != null) {
             response.setTechnicianId(serviceOrder.getTechnician().getId());
-            // Lay ten tu bang staff -> user
-            if (serviceOrder.getTechnician().getUser() != null) {
-                response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
-            }
+            // technician là User, lấy tên trực tiếp
+            response.setTechnicianName(serviceOrder.getTechnician().getFullName());
         }
         response.setStatus(serviceOrder.getStatus());
         response.setStartTime(serviceOrder.getStartTime());

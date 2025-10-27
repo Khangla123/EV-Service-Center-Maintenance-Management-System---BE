@@ -88,6 +88,7 @@ public class AppointmentController {
                     .build();
         }
         
+        // Get appointments by customerId
         List<AppointmentResponse> appointments = appointmentService.getAppointmentsByCustomerId(customerId);
         return ApiResponse.<List<AppointmentResponse>>builder()
                 .message("Danh sách lịch hẹn của bạn")

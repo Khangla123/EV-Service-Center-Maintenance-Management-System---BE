@@ -73,7 +73,7 @@ public class UserService {
                     .passwordHash(user.getPasswordHash())
                     .fullName(user.getFullName())
                     .phone(user.getPhone())
-                    .role("CUSTOMER")
+                    .role("customer")
                     .isActive(true)
                     .emailVerified(false)
                     .createdAt(user.getCreatedAt())
