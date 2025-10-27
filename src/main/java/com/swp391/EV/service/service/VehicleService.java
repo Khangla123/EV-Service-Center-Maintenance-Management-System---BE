@@ -214,6 +214,7 @@ public class VehicleService {
             response.setYear(vehicle.getVehicleModel().getYear());
             response.setBatteryCapacity(vehicle.getVehicleModel().getBatteryCapacity());
             response.setRangeKm(vehicle.getVehicleModel().getRangeKm());
+            response.setImageUrl(vehicle.getVehicleModel().getImageUrl()); // Lấy ảnh từ VehicleModel
         }
 
         response.setVin(vehicle.getVin());

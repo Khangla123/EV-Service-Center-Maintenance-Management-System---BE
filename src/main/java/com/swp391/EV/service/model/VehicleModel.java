@@ -35,6 +35,9 @@ public class VehicleModel {
     @Column(name = "range_km")
     private Integer rangeKm;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "created_at")
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

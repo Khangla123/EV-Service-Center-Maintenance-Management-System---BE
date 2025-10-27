@@ -70,3 +70,14 @@ springdoc:
   servers:
     - url: http://localhost:8080
       description: Local
+
+# File Upload Configuration
+file:
+  upload-dir: uploads
+  max-file-size: 5MB
+  max-request-size: 10MB
+
+spring.servlet.multipart:
+  enabled: true
+  max-file-size: 5MB
+  max-request-size: 10MB

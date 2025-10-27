@@ -13,6 +13,7 @@ public class VehicleModelResponse {
     private Integer year;
     private Double batteryCapacity;
     private Integer rangeKm;
+    private String imageUrl;
     private LocalDateTime createdAt;
 }
 

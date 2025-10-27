@@ -25,6 +25,7 @@ public class VehicleResponse {
     private LocalDate nextMaintenanceDate;
     private Double batteryCapacity; // Từ VehicleModel
     private Integer rangeKm; // Từ VehicleModel
+    private String imageUrl; // URL ảnh xe từ VehicleModel
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
