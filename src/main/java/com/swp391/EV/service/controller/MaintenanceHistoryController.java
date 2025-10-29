@@ -35,7 +35,7 @@ public class MaintenanceHistoryController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('CUSTOMER')")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'customer', 'ROLE_CUSTOMER')")
     @Operation(summary = "Get maintenance history", description = "Get maintenance history for authenticated customer with optional filters")
     public ApiResponse<MaintenanceHistoryStatisticsResponse> getMaintenanceHistory(
             @RequestParam(required = false) UUID vehicleId,
@@ -58,7 +58,7 @@ public class MaintenanceHistoryController {
     }
 
     @PostMapping("/filter")
-    @PreAuthorize("hasAuthority('CUSTOMER')")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'customer', 'ROLE_CUSTOMER')")
     @Operation(summary = "Filter maintenance history", description = "Filter maintenance history using request body")
     public ApiResponse<MaintenanceHistoryStatisticsResponse> filterMaintenanceHistory(
             @RequestBody MaintenanceHistoryFilterRequest filter) {
