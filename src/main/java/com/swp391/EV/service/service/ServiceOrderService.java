@@ -154,6 +154,8 @@ public class ServiceOrderService {
     /**
      * Tạo Service Order từ Appointment và phân công Technician ngay
      * Đây là flow chính: Appointment (CONFIRMED) -> Phân công thợ -> Tạo Service Order
+     * @param appointmentId ID của appointment đã CONFIRMED
+     * @param technicianId QUAN TRỌNG: Đây là USER_ID (từ bảng users), KHÔNG phải staff.id
      */
     @Transactional
     public ServiceOrderResponse createServiceOrderFromAppointment(UUID appointmentId, UUID technicianId) {
@@ -172,7 +174,8 @@ public class ServiceOrderService {
         }
 
         // 4. Lấy thông tin kỹ thuật viên
-        Staff technician = staffRepository.findById(technicianId)
+        // CRITICAL: technicianId là USER_ID, phải tìm staff theo user_id, không phải staff.id
+        Staff technician = staffRepository.findByUserId(technicianId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
 
         // 5. Tạo Service Order mới với technician đã được phân công
