@@ -92,6 +92,26 @@ public class InvoiceService {
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
+    
+    public Invoice getInvoiceByServiceOrderId(UUID serviceOrderId) {
+        List<Invoice> invoices = invoiceRepository.findByServiceOrderId(serviceOrderId);
+        return invoices.isEmpty() ? null : invoices.get(0);
+    }
+    
+    public List<InvoiceResponse> getUnpaidInvoices() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        UUID userId = UUID.fromString(jwt.getSubject());
+
+        Customer customer = customerRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+
+        return invoiceRepository.findByCustomerId(customer.getId()).stream()
+                .filter(invoice -> invoice.getStatus() == Invoice.InvoiceStatus.PENDING 
+                                || invoice.getStatus() == Invoice.InvoiceStatus.OVERDUE)
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
 
     @Transactional
     public InvoiceResponse updateInvoice(UUID id, UpdateInvoiceRequest request) {
@@ -132,12 +152,26 @@ public class InvoiceService {
         if (invoice.getServiceOrder() != null) {
             response.setServiceOrderId(invoice.getServiceOrder().getId());
             response.setOrderCode(invoice.getServiceOrder().getOrderCode());
+            
+            // Get vehicle info from service order's appointment
+            if (invoice.getServiceOrder().getAppointment() != null 
+                && invoice.getServiceOrder().getAppointment().getVehicle() != null) {
+                response.setVehicleLicensePlate(
+                    invoice.getServiceOrder().getAppointment().getVehicle().getLicensePlate()
+                );
+            }
         }
 
         if (invoice.getCustomer() != null) {
             response.setCustomerId(invoice.getCustomer().getId());
             response.setCustomerName(invoice.getCustomer().getFullName());
         }
+        
+        // Set aliases for frontend compatibility
+        response.setFinalAmount(invoice.getTotalAmount());
+        response.setIssueDate(invoice.getIssuedAt());
+        response.setDiscount(invoice.getDiscountAmount());
+        response.setStatus(invoice.getStatus());
 
         return response;
     }

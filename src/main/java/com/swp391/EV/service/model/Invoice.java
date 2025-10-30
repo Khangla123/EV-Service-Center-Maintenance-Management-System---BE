@@ -49,9 +49,17 @@ public class Invoice {
 
     @Column(name = "due_date")
     private LocalDateTime dueDate;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20)
+    @Builder.Default
+    private InvoiceStatus status = InvoiceStatus.PENDING;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+    
+    public enum InvoiceStatus {
+        PENDING, PAID, OVERDUE, CANCELLED
+    }
 }
-

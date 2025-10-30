@@ -36,16 +36,43 @@ public class MaintenanceHistoryService {
     public MaintenanceHistoryStatisticsResponse getMaintenanceHistory(MaintenanceHistoryFilterRequest filter) {
         // Get current authenticated user
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();
+        String principalName = authentication.getName();
+        
+        System.out.println("=== MAINTENANCE HISTORY SERVICE ===");
+        System.out.println("Principal from token: " + principalName);
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        Customer customer;
+        
+        // Check if principalName is UUID (user ID) or email
+        try {
+            // Try to parse as UUID first
+            java.util.UUID userId = java.util.UUID.fromString(principalName);
+            System.out.println("Principal is UUID (user ID): " + userId);
+            
+            // Find customer by user ID
+            customer = customerRepository.findByUserId(userId)
+                    .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+        } catch (IllegalArgumentException e) {
+            // Not a UUID, treat as email
+            System.out.println("Principal is email: " + principalName);
+            
+            // Try to find customer directly by email first
+            customer = customerRepository.findByEmail(principalName)
+                    .orElseGet(() -> {
+                        // Fallback: try to find by userId
+                        User user = userRepository.findByEmail(principalName)
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                        return customerRepository.findByUserId(user.getId())
+                                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+                    });
+        }
 
-        Customer customer = customerRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+        System.out.println("Customer found - ID: " + customer.getId() + ", Email: " + customer.getEmail());
+        System.out.println("Filter: vehicleId=" + filter.getVehicleId() + ", fromDate=" + filter.getFromDate() + ", toDate=" + filter.getToDate());
 
         // Get maintenance history based on filters
         List<ServiceAppointment> appointments = getFilteredAppointments(customer.getId(), filter);
+        System.out.println("Number of appointments found: " + appointments.size());
 
         // Map to response
         List<MaintenanceHistoryResponse> historyList = appointments.stream()
@@ -116,7 +143,17 @@ public class MaintenanceHistoryService {
                 : appointment.getAppointmentDate().plusMonths(6);
 
         // Determine if inspection passed based on status
-        Boolean inspectionPassed = appointment.getStatus() == ServiceAppointment.AppointmentStatus.COMPLETED;
+        // COMPLETED = true (đã kiểm tra và đạt)
+        // IN_PROGRESS = null (chưa kiểm tra xong)
+        // Other statuses = false (không đạt)
+        Boolean inspectionPassed;
+        if (appointment.getStatus() == ServiceAppointment.AppointmentStatus.COMPLETED) {
+            inspectionPassed = true;
+        } else if (appointment.getStatus() == ServiceAppointment.AppointmentStatus.IN_PROGRESS) {
+            inspectionPassed = null; // Chưa kiểm tra
+        } else {
+            inspectionPassed = false;
+        }
 
         return MaintenanceHistoryResponse.builder()
                 .appointmentId(appointment.getId())

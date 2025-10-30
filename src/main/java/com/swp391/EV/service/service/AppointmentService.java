@@ -1,6 +1,7 @@
 package com.swp391.EV.service.service;
 
 import com.swp391.EV.service.dto.request.CreateAppointmentRequest;
+import com.swp391.EV.service.dto.request.CreateInvoiceRequest;
 import com.swp391.EV.service.dto.request.UpdateAppointmentRequest;
 import com.swp391.EV.service.dto.response.AppointmentResponse;
 import com.swp391.EV.service.exception.AppException;
@@ -13,8 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -35,7 +38,13 @@ public class AppointmentService {
     @Autowired
     private final StaffRepository staffRepository;
     @Autowired
+    private final ServiceOrderRepository serviceOrderRepository;
+    @Autowired
     private final ModelMapper modelMapper;
+    
+    // Inject InvoiceService để tự động tạo invoice
+    @Autowired
+    private InvoiceService invoiceService;
 
     public List<AppointmentResponse> getAllAppointments() {
         return appointmentRepository.findAllWithDetails().stream()
@@ -115,6 +124,14 @@ public class AppointmentService {
             if (newStatus == ServiceAppointment.AppointmentStatus.COMPLETED 
                 && appointment.getActualCompletion() == null) {
                 appointment.setActualCompletion(LocalDateTime.now());
+                
+                // TỰ ĐỘNG TẠO INVOICE KHI HOÀN THÀNH
+                try {
+                    createInvoiceForCompletedAppointment(appointment);
+                } catch (Exception e) {
+                    // Log lỗi nhưng không làm fail toàn bộ transaction
+                    System.err.println("Failed to auto-create invoice for appointment " + appointment.getId() + ": " + e.getMessage());
+                }
             }
         }
         if (request.getNotes() != null) {
@@ -288,4 +305,48 @@ public class AppointmentService {
         response.setUpdatedAt(appointment.getUpdatedAt());
         return response;
     }
+    
+    /**
+     * Tự động tạo invoice khi appointment được hoàn thành
+     */
+    private void createInvoiceForCompletedAppointment(ServiceAppointment appointment) {
+        // 1. Kiểm tra xem đã có service order chưa
+        Optional<ServiceOrder> serviceOrderOpt = serviceOrderRepository.findByAppointmentId(appointment.getId());
+        
+        if (serviceOrderOpt.isEmpty()) {
+            System.err.println("Cannot create invoice: No service order found for appointment " + appointment.getId());
+            return;
+        }
+        
+        ServiceOrder serviceOrder = serviceOrderOpt.get();
+        
+        // 2. Kiểm tra xem đã có invoice chưa (tránh tạo trùng)
+        if (invoiceService.getInvoiceByServiceOrderId(serviceOrder.getId()) != null) {
+            System.out.println("Invoice already exists for service order " + serviceOrder.getId());
+            return;
+        }
+        
+        // 3. Tính toán chi phí từ service package
+        BigDecimal subtotal = BigDecimal.ZERO;
+        if (appointment.getServicePackage() != null && appointment.getServicePackage().getPrice() != null) {
+            subtotal = appointment.getServicePackage().getPrice();
+        }
+        
+        // 4. Tính thuế (10%)
+        BigDecimal taxAmount = subtotal.multiply(new BigDecimal("0.10"));
+        
+        // 5. Tạo invoice request
+        CreateInvoiceRequest invoiceRequest = new CreateInvoiceRequest();
+        invoiceRequest.setServiceOrderId(serviceOrder.getId());
+        invoiceRequest.setSubtotal(subtotal);
+        invoiceRequest.setTaxAmount(taxAmount);
+        invoiceRequest.setDiscountAmount(BigDecimal.ZERO);
+        invoiceRequest.setDueDate(LocalDateTime.now().plusDays(7)); // Hạn thanh toán 7 ngày
+        
+        // 6. Tạo invoice
+        invoiceService.createInvoice(invoiceRequest);
+        
+        System.out.println("Auto-created invoice for completed appointment " + appointment.getId());
+    }
 }
+

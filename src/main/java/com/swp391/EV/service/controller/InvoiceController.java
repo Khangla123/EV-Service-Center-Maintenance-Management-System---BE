@@ -72,5 +72,14 @@ public class InvoiceController {
                 .result(responses)
                 .build();
     }
+    
+    @GetMapping("/unpaid")
+    @Operation(summary = "Hóa đơn chưa thanh toán", description = "Get unpaid invoices for current customer (CUSTOMER)")
+    public ApiResponse<List<InvoiceResponse>> getUnpaidInvoices() {
+        List<InvoiceResponse> responses = invoiceService.getUnpaidInvoices();
+        return ApiResponse.<List<InvoiceResponse>>builder()
+                .message("Danh sách hóa đơn chưa thanh toán.")
+                .result(responses)
+                .build();
+    }
 }
-
