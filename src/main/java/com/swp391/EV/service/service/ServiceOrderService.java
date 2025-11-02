@@ -119,7 +119,7 @@ public class ServiceOrderService {
         Staff technician = staffRepository.findById(technicianId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
 
-        serviceOrder.setTechnician(technician.getUser()); // Lưu User thay vì Staff
+        serviceOrder.setTechnician(technician); // Lưu Staff object
         serviceOrder.setUpdatedAt(LocalDateTime.now());
 
         ServiceOrder updatedOrder = serviceOrderRepository.save(serviceOrder);
@@ -184,7 +184,7 @@ public class ServiceOrderService {
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
-                .technician(technician.getUser()) // Lưu User thay vì Staff
+                .technician(technician) // Lưu Staff object (phù hợp với DB FK)
                 .status(ServiceOrder.ServiceStatus.WAITING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -192,8 +192,8 @@ public class ServiceOrderService {
 
         ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
 
-        // 6. Cập nhật trạng thái appointment thành IN_PROGRESS
-        appointment.setStatus(ServiceAppointment.AppointmentStatus.IN_PROGRESS);
+        // 6. Cập nhật trạng thái appointment thành ASSIGNED (đã phân công, chờ technician bắt đầu)
+        appointment.setStatus(ServiceAppointment.AppointmentStatus.ASSIGNED);
         appointmentRepository.save(appointment);
 
         return convertToResponse(savedOrder);
@@ -206,8 +206,10 @@ public class ServiceOrderService {
         response.setOrderCode(serviceOrder.getOrderCode());
         if (serviceOrder.getTechnician() != null) {
             response.setTechnicianId(serviceOrder.getTechnician().getId());
-            // technician là User, lấy tên trực tiếp
-            response.setTechnicianName(serviceOrder.getTechnician().getFullName());
+            // technician là Staff, lấy User rồi lấy tên
+            if (serviceOrder.getTechnician().getUser() != null) {
+                response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
+            }
         }
         response.setStatus(serviceOrder.getStatus());
         response.setStartTime(serviceOrder.getStartTime());

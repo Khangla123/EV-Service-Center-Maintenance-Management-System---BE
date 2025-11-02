@@ -230,6 +230,27 @@ public class AppointmentService {
         return convertToResponse(cancelledAppointment);
     }
 
+    /**
+     * Technician bắt đầu công việc - chuyển từ ASSIGNED sang IN_PROGRESS
+     */
+    @Transactional
+    public AppointmentResponse startAppointment(UUID appointmentId) {
+        ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
+
+        // Kiểm tra appointment phải ở trạng thái ASSIGNED
+        if (appointment.getStatus() != ServiceAppointment.AppointmentStatus.ASSIGNED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // Chuyển sang IN_PROGRESS
+        appointment.setStatus(ServiceAppointment.AppointmentStatus.IN_PROGRESS);
+        appointment.setUpdatedAt(LocalDateTime.now());
+
+        ServiceAppointment startedAppointment = appointmentRepository.save(appointment);
+        return convertToResponse(startedAppointment);
+    }
+
     private AppointmentResponse convertToResponse(ServiceAppointment appointment) {
         AppointmentResponse response = new AppointmentResponse();
         response.setId(appointment.getId());

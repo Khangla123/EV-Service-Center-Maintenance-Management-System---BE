@@ -65,6 +65,11 @@ public class ServiceAppointment {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public enum AppointmentStatus {
-        PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
+        PENDING,      // Chờ xác nhận từ staff/admin
+        CONFIRMED,    // Đã xác nhận, chưa phân công technician
+        ASSIGNED,     // Đã phân công technician, chờ technician bắt đầu
+        IN_PROGRESS,  // Technician đã bắt đầu làm việc
+        COMPLETED,    // Đã hoàn thành
+        CANCELLED     // Đã hủy
     }
 }

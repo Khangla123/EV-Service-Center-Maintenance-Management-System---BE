@@ -130,6 +130,17 @@ public class AppointmentController {
                 .build();
     }
 
+    @PutMapping("/{id}/start")
+    @Operation(summary = "Technician bắt đầu công việc",
+               description = "Chuyển lịch hẹn từ ASSIGNED sang IN_PROGRESS khi technician bắt đầu làm việc")
+    public ApiResponse<AppointmentResponse> startAppointment(@PathVariable UUID id) {
+        AppointmentResponse response = appointmentService.startAppointment(id);
+        return ApiResponse.<AppointmentResponse>builder()
+                .message("Đã bắt đầu công việc")
+                .result(response)
+                .build();
+    }
+
     @GetMapping("/by-status")
     @Operation(summary = "Lọc lịch hẹn theo trạng thái",
                description = "Lấy danh sách lịch hẹn theo trạng thái (PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED)")

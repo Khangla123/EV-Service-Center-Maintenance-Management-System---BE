@@ -43,9 +43,9 @@ public class StaffService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
 
-        // Validate and normalize role
-        String role = request.getRole().toUpperCase();
-        if (!role.equals("STAFF") && !role.equals("TECHNICIAN")) {
+        // Validate and normalize role to lowercase
+        String role = request.getRole().toLowerCase();
+        if (!role.equals("staff") && !role.equals("technician")) {
             throw new AppException(ErrorCode.INVALID_ROLE);
         }
 
@@ -233,7 +233,7 @@ public class StaffService {
     }
 
     private String generateStaffCode(String role) {
-        String prefix = role.equals("TECHNICIAN") ? "TECH" : "STAFF";
+        String prefix = role.equals("technician") ? "TECH" : "STAFF";
         long count = staffRepository.count() + 1;
         return String.format("%s%05d", prefix, count);
     }
