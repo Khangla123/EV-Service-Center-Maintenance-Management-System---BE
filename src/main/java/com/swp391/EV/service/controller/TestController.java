@@ -66,4 +66,29 @@ public class TestController {
                     .build();
         }
     }
+    
+    /**
+     * REFACTOR: Remove status column from service_orders
+     * Status is now managed only in service_appointments.status
+     */
+    @PostMapping("/remove-service-order-status")
+    @Transactional
+    public ApiResponse<String> removeServiceOrderStatus() {
+        try {
+            String dropStatusSQL = "ALTER TABLE service_orders DROP COLUMN IF EXISTS status";
+            entityManager.createNativeQuery(dropStatusSQL).executeUpdate();
+            
+            return ApiResponse.<String>builder()
+                    .code(1000)
+                    .message("Successfully removed status column from service_orders")
+                    .result("Status is now managed only in service_appointments.status (PENDING → CONFIRMED → ASSIGNED → IN_PROGRESS → COMPLETED/CANCELLED)")
+                    .build();
+        } catch (Exception e) {
+            return ApiResponse.<String>builder()
+                    .code(1001)
+                    .message("Failed to remove status column")
+                    .result("Error: " + e.getMessage())
+                    .build();
+        }
+    }
 }

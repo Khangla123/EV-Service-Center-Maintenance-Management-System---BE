@@ -15,7 +15,8 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, UUID
 
     Optional<ServiceOrder> findByOrderCode(String orderCode);
 
-    List<ServiceOrder> findByStatus(ServiceOrder.ServiceStatus status);
+    // NOTE: Status removed from ServiceOrder - query appointment.status instead
+    // List<ServiceOrder> findByStatus(ServiceOrder.ServiceStatus status);
 
     @Query("SELECT so FROM ServiceOrder so WHERE so.technician.id = :technicianId")
     List<ServiceOrder> findByTechnicianId(@Param("technicianId") UUID technicianId);

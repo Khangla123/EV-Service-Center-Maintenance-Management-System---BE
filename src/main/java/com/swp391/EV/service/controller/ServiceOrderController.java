@@ -83,6 +83,9 @@ public class ServiceOrderController {
                 .build();
     }
 
+    // NOTE: Status management removed from ServiceOrder
+    // Use AppointmentController.updateStatus() to update appointment.status instead
+    /*
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái", description = "Cập nhật trạng thái đơn dịch vụ")
     public ApiResponse<ServiceOrderResponse> updateStatus(@PathVariable UUID id,
@@ -93,6 +96,7 @@ public class ServiceOrderController {
                 .result(response)
                 .build();
     }
+    */
 
     @GetMapping("/my-assignments")
     @Operation(summary = "Công việc được giao", description = "Lấy danh sách công việc của kỹ thuật viên")

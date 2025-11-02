@@ -14,7 +14,8 @@ public class ServiceOrderResponse {
     private String orderCode;
     private UUID technicianId;
     private String technicianName;
-    private ServiceOrder.ServiceStatus status;
+    // NOTE: Status được quản lý ở appointment.status, không duplicate ở service_order
+    // private ServiceOrder.ServiceStatus status; - REMOVED
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String checklist;

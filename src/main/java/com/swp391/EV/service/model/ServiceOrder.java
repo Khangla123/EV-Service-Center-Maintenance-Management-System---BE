@@ -32,9 +32,8 @@ public class ServiceOrder {
     @JoinColumn(name = "technician_id")
     private Staff technician;  // FK trỏ đến staff.id (phù hợp với DB constraint: service_orders_technician_id_fkey)
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private ServiceStatus status = ServiceStatus.WAITING;
+    // NOTE: Status được quản lý ở ServiceAppointment, không cần duplicate ở đây
+    // ServiceOrder chỉ lưu thông tin chi tiết công việc (diagnosis, parts, cost...)
 
     @Column(name = "start_time")
     private LocalDateTime startTime;
@@ -62,8 +61,4 @@ public class ServiceOrder {
     @Column(name = "updated_at")
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
-
-    public enum ServiceStatus {
-        WAITING, IN_PROGRESS, COMPLETED
-    }
 }

@@ -53,7 +53,7 @@ public class ServiceOrderService {
                 .appointment(appointment)
                 .orderCode(orderCode)
                 .technician(technicianStaff) // Lưu Staff (phù hợp với DB FK: staff.id)
-                .status(ServiceOrder.ServiceStatus.WAITING)
+                // NOTE: Status removed - managed in appointment.status
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -73,9 +73,10 @@ public class ServiceOrderService {
         ServiceOrder serviceOrder = serviceOrderRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
 
-        if (request.getStatus() != null) {
-            serviceOrder.setStatus(request.getStatus());
-        }
+        // NOTE: Status removed - use AppointmentService to update appointment.status
+        // if (request.getStatus() != null) {
+        //     serviceOrder.setStatus(request.getStatus());
+        // }
         if (request.getTechnicianId() != null) {
             Staff technician = staffRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
@@ -125,6 +126,10 @@ public class ServiceOrderService {
         return convertToResponse(updatedOrder);
     }
 
+    // NOTE: Status management removed from ServiceOrder
+    // Status is now managed in ServiceAppointment.status
+    // Use AppointmentService.updateStatus() instead
+    /*
     @Transactional
     public ServiceOrderResponse updateStatus(UUID orderId, ServiceOrder.ServiceStatus status) {
         ServiceOrder serviceOrder = serviceOrderRepository.findById(orderId)
@@ -143,6 +148,7 @@ public class ServiceOrderService {
         ServiceOrder updatedOrder = serviceOrderRepository.save(serviceOrder);
         return convertToResponse(updatedOrder);
     }
+    */
 
     public List<ServiceOrderResponse> getTechnicianTasks(UUID technicianId) {
         return serviceOrderRepository.findByTechnicianId(technicianId).stream()
@@ -186,13 +192,13 @@ public class ServiceOrderService {
         System.out.println("===================================");
 
         // 5. Tạo Service Order mới với technician đã được phân công
+        // NOTE: Không lưu status ở đây, status được quản lý ở appointment.status
         String orderCode = "SO" + System.currentTimeMillis();
 
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
                 .technician(technician) // Lưu Staff (phù hợp DB FK: staff.id)
-                .status(ServiceOrder.ServiceStatus.WAITING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -217,7 +223,8 @@ public class ServiceOrderService {
             // technician là Staff, lấy tên từ User
             response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
         }
-        response.setStatus(serviceOrder.getStatus());
+        // NOTE: Status được lấy từ appointment.status, không lưu ở service_order nữa
+        // response.setStatus() - REMOVED
         response.setStartTime(serviceOrder.getStartTime());
         response.setEndTime(serviceOrder.getEndTime());
         response.setChecklist(serviceOrder.getChecklist());
