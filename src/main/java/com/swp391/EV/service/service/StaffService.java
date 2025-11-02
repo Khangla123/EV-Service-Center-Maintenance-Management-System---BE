@@ -43,9 +43,9 @@ public class StaffService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
 
-        // Validate and normalize role to lowercase
-        String role = request.getRole().toLowerCase();
-        if (!role.equals("staff") && !role.equals("technician")) {
+        // Validate and normalize role to UPPERCASE for PostgreSQL ENUM
+        String role = request.getRole().toUpperCase();
+        if (!role.equals("STAFF") && !role.equals("TECHNICIAN")) {
             throw new AppException(ErrorCode.INVALID_ROLE);
         }
 

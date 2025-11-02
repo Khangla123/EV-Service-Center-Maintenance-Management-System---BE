@@ -115,6 +115,11 @@ public class ServiceOrderController {
     public ApiResponse<ServiceOrderResponse> createServiceOrderAndAssign(
             @PathVariable UUID appointmentId,
             @RequestParam UUID technicianId) {
+        System.out.println("=== CONTROLLER DEBUG ===");
+        System.out.println("Received appointmentId: " + appointmentId);
+        System.out.println("Received technicianId: " + technicianId);
+        System.out.println("========================");
+        
         ServiceOrderResponse response = serviceOrderService.createServiceOrderFromAppointment(appointmentId, technicianId);
         return ApiResponse.<ServiceOrderResponse>builder()
                 .message("Phân công kỹ thuật viên và tạo đơn dịch vụ thành công")

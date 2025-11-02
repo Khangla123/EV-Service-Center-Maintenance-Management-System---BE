@@ -40,11 +40,10 @@ public class ServiceOrderService {
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
 
         // Technician co the null khi tao moi (chua phan cong)
-        User technicianUser = null;
+        Staff technicianStaff = null;
         if (request.getTechnicianId() != null) {
-            Staff technician = staffRepository.findById(request.getTechnicianId())
+            technicianStaff = staffRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-            technicianUser = technician.getUser(); // Lấy User từ Staff
         }
 
         // Generate order code
@@ -53,7 +52,7 @@ public class ServiceOrderService {
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
-                .technician(technicianUser) // Lưu User thay vì Staff
+                .technician(technicianStaff) // Lưu Staff (phù hợp với DB FK: staff.id)
                 .status(ServiceOrder.ServiceStatus.WAITING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -80,7 +79,7 @@ public class ServiceOrderService {
         if (request.getTechnicianId() != null) {
             Staff technician = staffRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-            serviceOrder.setTechnician(technician.getUser()); // Lưu User thay vì Staff
+            serviceOrder.setTechnician(technician); // Lưu Staff (phù hợp DB FK: staff.id)
         }
         if (request.getStartTime() != null) {
             serviceOrder.setStartTime(request.getStartTime());
@@ -116,10 +115,10 @@ public class ServiceOrderService {
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
 
         // Lấy thông tin kỹ thuật viên từ bảng staff
-        Staff technician = staffRepository.findById(technicianId)
+        Staff staff = staffRepository.findById(technicianId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
 
-        serviceOrder.setTechnician(technician); // Lưu Staff object
+        serviceOrder.setTechnician(staff); // Lưu Staff (phù hợp DB FK: staff.id)
         serviceOrder.setUpdatedAt(LocalDateTime.now());
 
         ServiceOrder updatedOrder = serviceOrderRepository.save(serviceOrder);
@@ -174,9 +173,17 @@ public class ServiceOrderService {
         }
 
         // 4. Lấy thông tin kỹ thuật viên
-        // CRITICAL: technicianId là USER_ID, phải tìm staff theo user_id, không phải staff.id
+        // CRITICAL: technicianId là USER_ID từ frontend, phải tìm staff theo user_id
         Staff technician = staffRepository.findByUserId(technicianId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        // Log để debug
+        System.out.println("=== DEBUG CREATE SERVICE ORDER ===");
+        System.out.println("Input technicianId (user.id from FE): " + technicianId);
+        System.out.println("Found Staff.id: " + technician.getId());
+        System.out.println("Found Staff.user.id: " + technician.getUser().getId());
+        System.out.println("Will save technician_id to DB: " + technician.getId() + " (staff.id)");
+        System.out.println("===================================");
 
         // 5. Tạo Service Order mới với technician đã được phân công
         String orderCode = "SO" + System.currentTimeMillis();
@@ -184,7 +191,7 @@ public class ServiceOrderService {
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
-                .technician(technician) // Lưu Staff object (phù hợp với DB FK)
+                .technician(technician) // Lưu Staff (phù hợp DB FK: staff.id)
                 .status(ServiceOrder.ServiceStatus.WAITING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -192,8 +199,9 @@ public class ServiceOrderService {
 
         ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
 
-        // 6. Cập nhật trạng thái appointment thành ASSIGNED (đã phân công, chờ technician bắt đầu)
+        // 6. Cập nhật trạng thái appointment thành ASSIGNED và gán technician
         appointment.setStatus(ServiceAppointment.AppointmentStatus.ASSIGNED);
+        appointment.setTechnician(technician); // Gán technician vào appointment để hiển thị tên
         appointmentRepository.save(appointment);
 
         return convertToResponse(savedOrder);
@@ -205,11 +213,9 @@ public class ServiceOrderService {
         response.setAppointmentId(serviceOrder.getAppointment().getId());
         response.setOrderCode(serviceOrder.getOrderCode());
         if (serviceOrder.getTechnician() != null) {
-            response.setTechnicianId(serviceOrder.getTechnician().getId());
-            // technician là Staff, lấy User rồi lấy tên
-            if (serviceOrder.getTechnician().getUser() != null) {
-                response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
-            }
+            response.setTechnicianId(serviceOrder.getTechnician().getId()); // staff.id
+            // technician là Staff, lấy tên từ User
+            response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
         }
         response.setStatus(serviceOrder.getStatus());
         response.setStartTime(serviceOrder.getStartTime());

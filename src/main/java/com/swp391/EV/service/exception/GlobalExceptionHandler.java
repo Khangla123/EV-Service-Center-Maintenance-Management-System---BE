@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.nio.file.AccessDeniedException;
 
@@ -17,7 +18,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Void>> handlingRuntimeException(RuntimeException e, WebRequest request) {
+        log.error("Runtime Exception: ", e);
         ApiResponse<Void> response = new ApiResponse<>(1000, e.getMessage(), null);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+    
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handlingTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.error("Type Mismatch: {} - {}", e.getName(), e.getValue());
+        String message = String.format("Invalid value '%s' for parameter '%s'. Expected type: %s", 
+                                      e.getValue(), e.getName(), e.getRequiredType().getSimpleName());
+        ApiResponse<Void> response = new ApiResponse<>(1003, message, null);
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 

@@ -30,7 +30,7 @@ public class ServiceOrder {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "technician_id")
-    private Staff technician;  // Trỏ đến Staff (phù hợp với DB foreign key)
+    private Staff technician;  // FK trỏ đến staff.id (phù hợp với DB constraint: service_orders_technician_id_fkey)
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
