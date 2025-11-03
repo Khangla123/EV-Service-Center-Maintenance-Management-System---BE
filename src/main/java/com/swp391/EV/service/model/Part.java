@@ -22,7 +22,7 @@ public class Part {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "service_center_id")
     private ServiceCenter serviceCenter;
 
