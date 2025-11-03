@@ -203,12 +203,40 @@ public class ServiceOrderService {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
+        System.out.println("=== BEFORE SAVE SERVICE ORDER ===");
+        System.out.println("Service Order to be saved:");
+        System.out.println("  - orderCode: " + serviceOrder.getOrderCode());
+        System.out.println("  - appointment.id: " + serviceOrder.getAppointment().getId());
+        System.out.println("  - technician.id (staff.id): " + serviceOrder.getTechnician().getId());
+        System.out.println("  - technician.user.fullName: " + serviceOrder.getTechnician().getUser().getFullName());
+        System.out.println("  - startTime: " + serviceOrder.getStartTime());
+        System.out.println("  - endTime: " + serviceOrder.getEndTime());
+        System.out.println("  - checklist: " + serviceOrder.getChecklist());
+        System.out.println("  - diagnosis: " + serviceOrder.getDiagnosis());
+        System.out.println("  - workPerformed: " + serviceOrder.getWorkPerformed());
+        System.out.println("  - totalAmount: " + serviceOrder.getTotalAmount());
+        System.out.println("  - createdAt: " + serviceOrder.getCreatedAt());
+        System.out.println("==================================");
+
         ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
+
+        System.out.println("=== AFTER SAVE SERVICE ORDER ===");
+        System.out.println("Saved Service Order:");
+        System.out.println("  - id (generated): " + savedOrder.getId());
+        System.out.println("  - orderCode: " + savedOrder.getOrderCode());
+        System.out.println("  - appointment_id (FK): " + savedOrder.getAppointment().getId());
+        System.out.println("  - technician_id (FK to staff.id): " + savedOrder.getTechnician().getId());
+        System.out.println("=================================");
 
         // 6. Cập nhật trạng thái appointment thành ASSIGNED và gán technician
         appointment.setStatus(ServiceAppointment.AppointmentStatus.ASSIGNED);
         appointment.setTechnician(technician); // Gán technician vào appointment để hiển thị tên
         appointmentRepository.save(appointment);
+
+        System.out.println("=== APPOINTMENT UPDATED ===");
+        System.out.println("Appointment status changed to: " + appointment.getStatus());
+        System.out.println("Appointment technician set to: " + appointment.getTechnician().getUser().getFullName());
+        System.out.println("===========================");
 
         return convertToResponse(savedOrder);
     }
