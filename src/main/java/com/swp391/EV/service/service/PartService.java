@@ -11,7 +11,6 @@ import com.swp391.EV.service.model.ServiceCenter;
 import com.swp391.EV.service.repository.PartRepository;
 import com.swp391.EV.service.repository.ServiceCenterRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +24,6 @@ public class PartService {
 
     private final PartRepository partRepository;
     private final ServiceCenterRepository serviceCenterRepository;
-    private final ModelMapper modelMapper;
 
     @Transactional
     public PartResponse createPart(CreatePartRequest request) {
@@ -55,6 +53,7 @@ public class PartService {
         return mapToResponse(part);
     }
 
+    @Transactional(readOnly = true)
     public List<PartResponse> getAllParts() {
         return partRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -124,12 +123,22 @@ public class PartService {
     }
 
     private PartResponse mapToResponse(Part part) {
-        PartResponse response = modelMapper.map(part, PartResponse.class);
-        if (part.getServiceCenter() != null) {
-            response.setServiceCenterId(part.getServiceCenter().getId());
-            response.setServiceCenterName(part.getServiceCenter().getName());
-        }
-        return response;
+        return PartResponse.builder()
+                .id(part.getId())
+                .serviceCenterId(part.getServiceCenter() != null ? part.getServiceCenter().getId() : null)
+                .serviceCenterName(part.getServiceCenter() != null ? part.getServiceCenter().getName() : null)
+                .partCode(part.getPartCode())
+                .name(part.getName())
+                .description(part.getDescription())
+                .category(part.getCategory())
+                .unitPrice(part.getUnitPrice())
+                .stockQuantity(part.getStockQuantity())
+                .minStockLevel(part.getMinStockLevel())
+                .supplier(part.getSupplier())
+                .isActive(part.getIsActive())
+                .createdAt(part.getCreatedAt())
+                .updatedAt(part.getUpdatedAt())
+                .build();
     }
 }
 
