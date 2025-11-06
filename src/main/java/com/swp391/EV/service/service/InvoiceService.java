@@ -13,6 +13,7 @@ import com.swp391.EV.service.repository.CustomerRepository;
 import com.swp391.EV.service.repository.InvoiceRepository;
 import com.swp391.EV.service.repository.ServiceOrderRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.modelmapper.ModelMapper;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,15 +35,36 @@ public class InvoiceService {
     private final ServiceOrderRepository serviceOrderRepository;
     private final CustomerRepository customerRepository;
     private final ModelMapper modelMapper;
+    
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(InvoiceService.class);
 
     @Transactional
     public InvoiceResponse createInvoice(CreateInvoiceRequest request) {
-        // Verify service order exists
-        ServiceOrder serviceOrder = serviceOrderRepository.findById(request.getServiceOrderId())
+        log.info("=== CREATE INVOICE START ===");
+        log.info("Service Order ID: {}", request.getServiceOrderId());
+        
+        // Verify service order exists and eagerly load appointment and customer
+        ServiceOrder serviceOrder = serviceOrderRepository.findByIdWithDetails(request.getServiceOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
 
-        // Get customer from service order
+        log.info("Found service order: {}", serviceOrder.getId());
+        log.info("Service order technician: {}", serviceOrder.getTechnician() != null ? serviceOrder.getTechnician().getId() : "null");
+        log.info("Service order appointment: {}", serviceOrder.getAppointment() != null ? serviceOrder.getAppointment().getId() : "null");
+        
+        // Force initialize ALL lazy-loaded entities explicitly
+        Hibernate.initialize(serviceOrder.getAppointment());
+        Hibernate.initialize(serviceOrder.getAppointment().getCustomer());
+        Hibernate.initialize(serviceOrder.getAppointment().getVehicle());
+        if (serviceOrder.getTechnician() != null) {
+            Hibernate.initialize(serviceOrder.getTechnician());
+            log.info("Initialized technician: {}", serviceOrder.getTechnician().getId());
+        }
+        
+        log.info("All entities initialized successfully");
+        
+        // Get customer from service order (already eagerly loaded)
         Customer customer = serviceOrder.getAppointment().getCustomer();
+        log.info("Customer: {}", customer.getId());
 
         // Generate invoice number
         String invoiceNumber = generateInvoiceNumber();
@@ -69,9 +91,15 @@ public class InvoiceService {
     }
 
     public List<InvoiceResponse> getAllInvoices() {
-        return invoiceRepository.findAll().stream()
+        List<Invoice> invoices = invoiceRepository.findAll();
+        log.info("🔍 [InvoiceService] Found {} invoices", invoices.size());
+        
+        List<InvoiceResponse> responses = invoices.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+        
+        log.info("✅ [InvoiceService] Converted to {} responses", responses.size());
+        return responses;
     }
 
     public InvoiceResponse getInvoiceById(UUID id) {

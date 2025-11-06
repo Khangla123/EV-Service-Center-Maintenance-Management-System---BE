@@ -47,9 +47,15 @@ public class AppointmentService {
     private InvoiceService invoiceService;
 
     public List<AppointmentResponse> getAllAppointments() {
-        return appointmentRepository.findAllWithDetails().stream()
+        List<ServiceAppointment> appointments = appointmentRepository.findAllWithDetails();
+        System.out.println("🔍 [AppointmentService] Found " + appointments.size() + " appointments");
+        
+        List<AppointmentResponse> responses = appointments.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
+        
+        System.out.println("✅ [AppointmentService] Converted to " + responses.size() + " responses");
+        return responses;
     }
 
     @Transactional

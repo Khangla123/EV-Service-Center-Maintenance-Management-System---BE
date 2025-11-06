@@ -59,7 +59,7 @@ public class UserService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
-                .role("CUSTOMER")
+                .role("customer")
                 .isActive(true)
                 .createdAt(java.time.OffsetDateTime.now())
                 .build();
@@ -67,7 +67,7 @@ public class UserService {
 
         // Tự động tạo Customer record cho user có role CUSTOMER
         
-        if ("CUSTOMER".equalsIgnoreCase(user.getRole())) {
+        if ("customer".equalsIgnoreCase(user.getRole())) {
             Customer customer = Customer.builder()
                     .userId(user.getId())
                     .username(user.getUsername())

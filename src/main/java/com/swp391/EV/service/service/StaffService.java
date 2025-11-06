@@ -20,6 +20,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -43,9 +45,9 @@ public class StaffService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
 
-        // Validate and normalize role to UPPERCASE for PostgreSQL ENUM
-        String role = request.getRole().toUpperCase();
-        if (!role.equals("STAFF") && !role.equals("TECHNICIAN")) {
+        // Validate and normalize role to lowercase
+        String role = request.getRole().toLowerCase();
+        if (!role.equals("staff") && !role.equals("technician")) {
             throw new AppException(ErrorCode.INVALID_ROLE);
         }
 
@@ -76,14 +78,27 @@ public class StaffService {
         // Generate staff code
         String staffCode = generateStaffCode(role);
 
+        // Set default values for optional fields
+        String specialization = request.getSpecialization() != null 
+                ? request.getSpecialization() 
+                : (role.equals("technician") ? "EV Maintenance Specialist" : "Customer Service");
+
+        LocalDate hireDate = request.getHireDate() != null 
+                ? request.getHireDate() 
+                : LocalDate.now();
+        
+        BigDecimal salary = request.getSalary() != null 
+                ? request.getSalary() 
+                : BigDecimal.valueOf(15000000.00);
+
         // Create Staff
         Staff staff = Staff.builder()
                 .user(user)
                 .serviceCenter(serviceCenter)
                 .staffCode(staffCode)
-                .specialization(request.getSpecialization())
-                .hireDate(request.getHireDate())
-                .salary(request.getSalary())
+                .specialization(specialization)
+                .hireDate(hireDate)
+                .salary(salary)
                 .isAvailable(true)
                 .build();
 
@@ -102,14 +117,14 @@ public class StaffService {
 
     @Transactional(readOnly = true)
     public StaffResponse getStaffById(UUID id) {
-        Staff staff = staffRepository.findById(id)
+        Staff staff = staffRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         return mapToResponse(staff);
     }
 
     @Transactional
     public StaffResponse updateStaff(UUID id, UpdateStaffRequest request) {
-        Staff staff = staffRepository.findById(id)
+        Staff staff = staffRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         User user = staff.getUser();
@@ -150,7 +165,7 @@ public class StaffService {
 
     @Transactional
     public void deleteStaff(UUID id) {
-        Staff staff = staffRepository.findById(id)
+        Staff staff = staffRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         User user = staff.getUser();

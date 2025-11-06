@@ -1,6 +1,7 @@
 package com.swp391.EV.service.repository;
 
 import com.swp391.EV.service.model.ServiceOrder;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +27,26 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, UUID
 
     @Query("SELECT so FROM ServiceOrder so WHERE so.appointment.customer.id = :customerId")
     List<ServiceOrder> findByCustomerId(@Param("customerId") UUID customerId);
+
+    @Query("SELECT so FROM ServiceOrder so " +
+           "LEFT JOIN FETCH so.appointment a " +
+           "LEFT JOIN FETCH a.customer " +
+           "LEFT JOIN FETCH a.vehicle " +
+           "WHERE so.id = :id")
+    Optional<ServiceOrder> findByIdWithAppointmentAndCustomer(@Param("id") UUID id);
+
+    @Query("SELECT so FROM ServiceOrder so " +
+           "LEFT JOIN FETCH so.technician " +
+           "WHERE so.id = :id")
+    Optional<ServiceOrder> findByIdWithTechnician(@Param("id") UUID id);
+
+    @Query("SELECT so FROM ServiceOrder so " +
+           "LEFT JOIN FETCH so.appointment a " +
+           "LEFT JOIN FETCH a.customer " +
+           "LEFT JOIN FETCH a.vehicle " +
+           "LEFT JOIN FETCH a.serviceCenter " +
+           "LEFT JOIN FETCH a.servicePackage " +
+           "LEFT JOIN FETCH so.technician " +
+           "WHERE so.id = :id")
+    Optional<ServiceOrder> findByIdWithDetails(@Param("id") UUID id);
 }
