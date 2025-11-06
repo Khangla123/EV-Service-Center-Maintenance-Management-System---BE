@@ -127,7 +127,7 @@ CREATE TABLE service_orders (
                                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                                 appointment_id UUID REFERENCES service_appointments(id),
                                 order_code VARCHAR(20) UNIQUE,
-                                technician_id UUID REFERENCES staff(id),
+                                technician_id UUID REFERENCES users(id),
                                 status service_status DEFAULT 'WAITING',
                                 start_time TIMESTAMP WITH TIME ZONE,
     end_time TIMESTAMP WITH TIME ZONE,

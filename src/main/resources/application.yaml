@@ -6,7 +6,7 @@ spring:
     name: EV-Service
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/EVService
+    url: jdbc:postgresql://localhost:5432/EVService7
     username: postgres
     password: 12345
     hikari:
@@ -32,7 +32,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: eschoolmed391@gmail.com
-    password: "raef qciq wrvn ipxh"
+    password: raef qciq wrvn ipxh
     default-encoding: UTF-8
     protocol: smtp
     test-connection: false
@@ -49,6 +49,17 @@ jwt:
   signer-key: HJ4ppveef04BKJzTq+dyLhRdicqYiQWxaSqTLiTUxksDu4zMs/NLfrJsbHz+4OiB
   expiration-duration: 86400
 
+# VNPay Payment Gateway Configuration
+vnpay:
+  vnp-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  return-url: http://localhost:3000/payment/callback
+  tmn-code: DEMOMERCHANT
+  secret-key: RAOEXHYVSDDIIENYWSLDIIZTANXUXZFJ
+  version: 2.1.0
+  command: pay
+  order-type: other
+  timeout-minutes: 15
+
 springdoc:
   api-docs:
     path: /api/v1/api-docs
@@ -59,3 +70,14 @@ springdoc:
   servers:
     - url: http://localhost:8080
       description: Local
+
+# File Upload Configuration
+file:
+  upload-dir: uploads
+  max-file-size: 5MB
+  max-request-size: 10MB
+
+spring.servlet.multipart:
+  enabled: true
+  max-file-size: 5MB
+  max-request-size: 10MB

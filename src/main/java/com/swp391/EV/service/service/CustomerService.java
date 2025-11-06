@@ -7,7 +7,9 @@ import com.swp391.EV.service.dto.response.CustomerProfileResponse;
 import com.swp391.EV.service.exception.AppException;
 import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.Customer;
+import com.swp391.EV.service.model.User;
 import com.swp391.EV.service.repository.CustomerRepository;
+import com.swp391.EV.service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -30,6 +32,9 @@ public class CustomerService {
 
     @Autowired
     private CustomerRepository customerRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -56,38 +61,45 @@ public class CustomerService {
             );
         }
 
-        // Check if email already exists
-        if (customerRepository.existsByEmail(request.getEmail())) {
+        // Check if email already exists in users table
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
         }
 
-        // Check if username already exists
-        if (request.getUsername() != null && customerRepository.existsByUsername(request.getUsername())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username đã tồn tại");
-        }
-
-        // Check if customer code already exists
-        if (request.getCustomerCode() != null && customerRepository.existsByCustomerCode(request.getCustomerCode())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã khách hàng đã tồn tại");
-        }
-
-        // Create Customer directly with temporary password
-        String tempPassword = generateTemporaryPassword();
-        Customer customer = Customer.builder()
-                .username(request.getUsername())
+        // Step 1: Create User first
+        // Use password from request if provided, otherwise generate temporary password
+        String password = request.getPassword() != null && !request.getPassword().isBlank() 
+                ? request.getPassword() 
+                : generateTemporaryPassword();
+        
+        // Generate username from email (part before @)
+        String username = request.getEmail().split("@")[0];
+        
+        User user = User.builder()
+                .username(username) // Required field
                 .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(tempPassword))
+                .passwordHash(passwordEncoder.encode(password))
                 .fullName(request.getFullName())
-                .phone(request.getPhone())
-                .address(request.getAddress())
-                .role("CUSTOMER")
+                .role("customer") // lowercase role
                 .isActive(true)
                 .emailVerified(false)
-                .userCreatedAt(OffsetDateTime.now())
-                .userUpdatedAt(OffsetDateTime.now())
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
+        
+        User savedUser = userRepository.save(user);
+
+        // Step 2: Create Customer with reference to User
+        Customer customer = Customer.builder()
+                .userId(savedUser.getId()) // FK to users table
+                .email(request.getEmail()) // Set email in customer table too
+                .fullName(request.getFullName()) // Set fullName
                 .customerCode(request.getCustomerCode() != null ? request.getCustomerCode() : generateCustomerCode())
+                .phone(request.getPhone())
+                .address(request.getAddress())
                 .dateOfBirth(request.getDateOfBirth())
                 .totalSpent(BigDecimal.ZERO)
+                .isActive(true)
                 .createdAt(OffsetDateTime.now())
                 .build();
 
@@ -100,6 +112,13 @@ public class CustomerService {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
+        return buildCustomerProfileResponse(customer);
+    }
+
+    public CustomerProfileResponse getCustomerByUserId(UUID userId) {
+        Customer customer = customerRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        
         return buildCustomerProfileResponse(customer);
     }
 

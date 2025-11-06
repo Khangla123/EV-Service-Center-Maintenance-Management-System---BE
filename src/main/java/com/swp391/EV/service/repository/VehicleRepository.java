@@ -22,10 +22,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     @Query("SELECT v FROM Vehicle v WHERE v.customer.id = :customerId AND v.isActive = true")
     List<Vehicle> findActiveVehiclesByCustomerId(@Param("customerId") UUID customerId);
 
-    @Query("SELECT v FROM Vehicle v WHERE v.manufacturer LIKE %:manufacturer%")
+    @Query("SELECT v FROM Vehicle v WHERE v.vehicleModel.manufacturer LIKE %:manufacturer%")
     List<Vehicle> findByManufacturerContaining(@Param("manufacturer") String manufacturer);
 
-    @Query("SELECT v FROM Vehicle v WHERE v.model LIKE %:model%")
+    @Query("SELECT v FROM Vehicle v WHERE v.vehicleModel.model LIKE %:model%")
     List<Vehicle> findByModelContaining(@Param("model") String model);
 
     List<Vehicle> findByIsActiveTrue();

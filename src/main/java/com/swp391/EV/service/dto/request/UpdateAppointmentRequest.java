@@ -4,11 +4,13 @@ import com.swp391.EV.service.model.ServiceAppointment;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 public class UpdateAppointmentRequest {
     private LocalDateTime appointmentDate;
     private ServiceAppointment.AppointmentStatus status;
     private String notes;
+    private UUID technicianId;
     private LocalDateTime estimatedCompletion;
 }

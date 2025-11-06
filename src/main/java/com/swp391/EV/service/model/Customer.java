@@ -19,7 +19,9 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    // User fields embedded directly
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
+
     @Column(name = "username", unique = true)
     private String username;
 

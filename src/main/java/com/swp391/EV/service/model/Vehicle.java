@@ -21,9 +21,13 @@ public class Vehicle {
     @Column(columnDefinition = "BINARY(16)")
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "customer_id")
     private Customer customer;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "vehicle_model_id")
+    private VehicleModel vehicleModel;
 
     @Column(name = "vin", unique = true, nullable = false, length = 17)
     private String vin;
@@ -31,20 +35,14 @@ public class Vehicle {
     @Column(name = "license_plate", unique = true, length = 20)
     private String licensePlate;
 
-    @Column(name = "manufacturer")
-    private String manufacturer;
-
-    @Column(name = "model")
-    private String model;
-
-    @Column(name = "year")
-    private Integer year;
-
     @Column(name = "color", length = 50)
     private String color;
 
     @Column(name = "purchase_date")
     private LocalDate purchaseDate;
+
+    @Column(name = "warranty_expiration")
+    private LocalDate warrantyExpiration;
 
     @Column(name = "mileage")
     @Builder.Default
@@ -55,12 +53,6 @@ public class Vehicle {
 
     @Column(name = "next_maintenance_date")
     private LocalDate nextMaintenanceDate;
-
-    @Column(name = "battery_capacity")
-    private Double batteryCapacity;
-
-    @Column(name = "range_km")
-    private Integer rangeKm;
 
     @Column(name = "created_at")
     @Builder.Default

@@ -4,10 +4,12 @@ import com.swp391.EV.service.dto.ApiResponse;
 import com.swp391.EV.service.dto.request.CreateAppointmentRequest;
 import com.swp391.EV.service.dto.request.UpdateAppointmentRequest;
 import com.swp391.EV.service.dto.response.AppointmentResponse;
+import com.swp391.EV.service.model.ServiceAppointment;
 import com.swp391.EV.service.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +21,7 @@ import java.util.UUID;
 @Tag(name = "Appointments", description = "Quản lý lịch hẹn")
 public class AppointmentController {
 
+    @Autowired
     private final AppointmentService appointmentService;
 
     @GetMapping
@@ -35,6 +38,7 @@ public class AppointmentController {
     @Operation(summary = "Đặt lịch hẹn", description = "Tạo lịch hẹn mới")
     public ApiResponse<AppointmentResponse> createAppointment(@RequestBody CreateAppointmentRequest request) {
         AppointmentResponse response = appointmentService.createAppointment(request);
+        
         return ApiResponse.<AppointmentResponse>builder()
                 .message("Đặt lịch hẹn thành công")
                 .result(response)
@@ -73,7 +77,18 @@ public class AppointmentController {
 
     @GetMapping("/me")
     @Operation(summary = "Lịch hẹn của tôi", description = "Lấy danh sách lịch hẹn của khách hàng hiện tại")
-    public ApiResponse<List<AppointmentResponse>> getMyAppointments(@RequestParam UUID customerId) {
+    public ApiResponse<List<AppointmentResponse>> getMyAppointments(
+            @RequestParam(required = false) UUID customerId) {
+        // If customerId not provided, return empty list for now
+        // TODO: Get customerId from JWT token in SecurityContext
+        if (customerId == null) {
+            return ApiResponse.<List<AppointmentResponse>>builder()
+                    .message("Customer ID is required")
+                    .result(List.of())
+                    .build();
+        }
+        
+        // Get appointments by customerId
         List<AppointmentResponse> appointments = appointmentService.getAppointmentsByCustomerId(customerId);
         return ApiResponse.<List<AppointmentResponse>>builder()
                 .message("Danh sách lịch hẹn của bạn")
@@ -88,6 +103,64 @@ public class AppointmentController {
         return ApiResponse.<List<AppointmentResponse>>builder()
                 .message("Danh sách khung giờ trống")
                 .result(timeSlots)
+                .build();
+    }
+
+    @PutMapping("/{id}/confirm")
+    @Operation(summary = "Xác nhận lịch hẹn",
+               description = "Staff xác nhận lịch hẹn (PENDING -> CONFIRMED)")
+    public ApiResponse<AppointmentResponse> confirmAppointment(@PathVariable UUID id) {
+        AppointmentResponse response = appointmentService.confirmAppointment(id);
+        return ApiResponse.<AppointmentResponse>builder()
+                .message("Xác nhận lịch hẹn thành công")
+                .result(response)
+                .build();
+    }
+
+    @PutMapping("/{id}/cancel")
+    @Operation(summary = "Hủy lịch hẹn",
+               description = "Staff hủy lịch hẹn với lý do")
+    public ApiResponse<AppointmentResponse> cancelAppointment(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        AppointmentResponse response = appointmentService.cancelAppointment(id, reason);
+        return ApiResponse.<AppointmentResponse>builder()
+                .message("Hủy lịch hẹn thành công")
+                .result(response)
+                .build();
+    }
+
+    @PutMapping("/{id}/start")
+    @Operation(summary = "Technician bắt đầu công việc",
+               description = "Chuyển lịch hẹn từ ASSIGNED sang IN_PROGRESS khi technician bắt đầu làm việc")
+    public ApiResponse<AppointmentResponse> startAppointment(@PathVariable UUID id) {
+        AppointmentResponse response = appointmentService.startAppointment(id);
+        return ApiResponse.<AppointmentResponse>builder()
+                .message("Đã bắt đầu công việc")
+                .result(response)
+                .build();
+    }
+
+    @GetMapping("/by-status")
+    @Operation(summary = "Lọc lịch hẹn theo trạng thái",
+               description = "Lấy danh sách lịch hẹn theo trạng thái (PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED)")
+    public ApiResponse<List<AppointmentResponse>> getAppointmentsByStatus(
+            @RequestParam ServiceAppointment.AppointmentStatus status) {
+        List<AppointmentResponse> appointments = appointmentService.getAppointmentsByStatus(status);
+        return ApiResponse.<List<AppointmentResponse>>builder()
+                .message("Danh sách lịch hẹn " + status)
+                .result(appointments)
+                .build();
+    }
+
+    @GetMapping("/my-tasks")
+    @Operation(summary = "Công việc của tôi", 
+               description = "Lấy danh sách công việc được phân công cho technician hiện tại")
+    public ApiResponse<List<AppointmentResponse>> getMyTasks(@RequestParam UUID technicianId) {
+        List<AppointmentResponse> appointments = appointmentService.getAppointmentsByTechnicianId(technicianId);
+        return ApiResponse.<List<AppointmentResponse>>builder()
+                .message("Danh sách công việc của bạn")
+                .result(appointments)
                 .build();
     }
 }

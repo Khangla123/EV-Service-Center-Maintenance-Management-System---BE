@@ -9,7 +9,8 @@ import java.util.UUID;
 
 @Data
 public class UpdateServiceOrderRequest {
-    private ServiceOrder.ServiceStatus status;
+    // NOTE: Status removed - managed in appointment.status
+    // private ServiceOrder.ServiceStatus status;
     private UUID technicianId;
     private LocalDateTime startTime;
     private LocalDateTime endTime;

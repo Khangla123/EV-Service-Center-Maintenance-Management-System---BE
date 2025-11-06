@@ -9,7 +9,9 @@ import com.swp391.EV.service.dto.response.RegisterResponse;
 import com.swp391.EV.service.exception.AppException;
 import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.User;
+import com.swp391.EV.service.model.Customer;
 import com.swp391.EV.service.repository.UserRepository;
+import com.swp391.EV.service.repository.CustomerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,9 +25,11 @@ import java.util.UUID;
 @Service
 public class UserService {
 
-
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -55,12 +59,29 @@ public class UserService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
-                .address(request.getAddress())
-                .role("customer")
+                .role("CUSTOMER")
                 .isActive(true)
                 .createdAt(java.time.OffsetDateTime.now())
                 .build();
-        userRepository.save(user);
+        user = userRepository.save(user);
+
+        // Tự động tạo Customer record cho user có role CUSTOMER
+        
+        if ("CUSTOMER".equalsIgnoreCase(user.getRole())) {
+            Customer customer = Customer.builder()
+                    .userId(user.getId())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .passwordHash(user.getPasswordHash())
+                    .fullName(user.getFullName())
+                    .phone(user.getPhone())
+                    .role("customer")
+                    .isActive(true)
+                    .emailVerified(false)
+                    .createdAt(user.getCreatedAt())
+                    .build();
+            customerRepository.save(customer);
+        }
 
         String token = authService.generateTokenForUser(user);
 
@@ -183,6 +204,6 @@ public class UserService {
     }
 
     private boolean isValidRole(String role) {
-        return role.equals("admin") || role.equals("customer") || role.equals("technician") || role.equals("staff");
+        return role.equals("ADMIN") || role.equals("CUSTOMER") || role.equals("TECHNICIAN") || role.equals("STAFF");
     }
 }

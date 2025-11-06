@@ -26,7 +26,18 @@ public enum ErrorCode {
     INVALID_INPUT(1015, "Dữ liệu đầu vào không hợp lệ", HttpStatus.BAD_REQUEST),
     FORBIDDEN_ACTION(1016, "Không có quyền thực hiện hành động này", HttpStatus.FORBIDDEN),
     DATABASE_ERROR(1017, "Lỗi cơ sở dữ liệu", HttpStatus.INTERNAL_SERVER_ERROR),
-    INVALID_ROLE(1018, "Vai trò không hợp lệ", HttpStatus.BAD_REQUEST);
+    INVALID_ROLE(1018, "Vai trò không hợp lệ", HttpStatus.BAD_REQUEST),
+    SERVICE_CENTER_NOT_FOUND(1019, "Không tìm thấy trung tâm dịch vụ", HttpStatus.NOT_FOUND),
+    STAFF_NOT_FOUND(1020, "Không tìm thấy nhân viên", HttpStatus.NOT_FOUND),
+    STAFF_ALREADY_EXISTS(1021, "Nhân viên đã tồn tại", HttpStatus.BAD_REQUEST),
+    PART_NOT_FOUND(1022, "Không tìm thấy phụ tùng", HttpStatus.NOT_FOUND),
+    PART_CODE_EXISTED(1023, "Mã phụ tùng đã tồn tại", HttpStatus.BAD_REQUEST),
+    INVALID_REQUEST(1024, "Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
+    SERVICE_ORDER_NOT_FOUND(1025, "Không tìm thấy đơn dịch vụ", HttpStatus.NOT_FOUND),
+    INVOICE_NOT_FOUND(1026, "Không tìm thấy hóa đơn", HttpStatus.NOT_FOUND),
+    PAYMENT_NOT_FOUND(1027, "Không tìm thấy thanh toán", HttpStatus.NOT_FOUND),
+    VEHICLE_NOT_FOUND(1028, "Không tìm thấy xe", HttpStatus.NOT_FOUND),
+    APPOINTMENT_NOT_FOUND(1029, "Không tìm thấy lịch hẹn", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;
