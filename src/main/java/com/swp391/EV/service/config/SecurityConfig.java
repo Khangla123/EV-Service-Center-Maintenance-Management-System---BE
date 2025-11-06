@@ -107,8 +107,11 @@ public class SecurityConfig {
                         // ServiceOrderController
                         .requestMatchers(HttpMethod.GET, "/api/service-orders").permitAll() // danh sách đơn dịch vụ
                         .requestMatchers(HttpMethod.POST, "/api/service-orders").permitAll() // tạo đơn dịch vụ
+                        .requestMatchers(HttpMethod.GET, "/api/service-orders/technician/me").permitAll() // service orders của technician với checklist
+                        .requestMatchers(HttpMethod.GET, "/api/service-orders/appointment/**").permitAll() // service order theo appointment ID
                         .requestMatchers(HttpMethod.GET, "/api/service-orders/**").permitAll() // chi tiết đơn dịch vụ
                         .requestMatchers(HttpMethod.PUT, "/api/service-orders/**").permitAll() // cập nhật đơn dịch vụ
+                        .requestMatchers(HttpMethod.POST, "/api/service-orders/from-appointment/**").permitAll() // tạo service order từ appointment
                         .requestMatchers(HttpMethod.PUT, "/api/service-orders/*/assign").permitAll() // phân công thợ
                         .requestMatchers(HttpMethod.PUT, "/api/service-orders/*/status").permitAll() // cập nhật trạng thái
                         .requestMatchers(HttpMethod.GET, "/api/service-orders/my-assignments").permitAll() // công việc được giao

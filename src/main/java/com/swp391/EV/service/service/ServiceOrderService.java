@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -23,9 +24,10 @@ public class ServiceOrderService {
     private final ServiceOrderRepository serviceOrderRepository;
     private final ServiceAppointmentRepository appointmentRepository;
     private final StaffRepository staffRepository;
+    private final MaintenancePlanRepository maintenancePlanRepository;
 
     public List<ServiceOrderResponse> getAllServiceOrders() {
-        return serviceOrderRepository.findAll().stream()
+        return serviceOrderRepository.findAllWithTechnician().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
@@ -191,7 +193,35 @@ public class ServiceOrderService {
         System.out.println("Will save technician_id to DB: " + technician.getId() + " (staff.id)");
         System.out.println("===================================");
 
-        // 5. Tạo Service Order mới với technician đã được phân công
+        // 5. Load checklist template từ maintenance_plans
+        String checklistJson = null;
+        try {
+            UUID servicePackageId = appointment.getServicePackage().getId();
+            UUID vehicleModelId = appointment.getVehicle().getVehicleModel().getId();
+            
+            Optional<MaintenancePlan> maintenancePlan = maintenancePlanRepository
+                    .findByServicePackageIdAndVehicleModelId(servicePackageId, vehicleModelId);
+            
+            if (maintenancePlan.isEmpty()) {
+                // Fallback: Tìm plan chung không phân biệt vehicle model
+                maintenancePlan = maintenancePlanRepository.findByServicePackageId(servicePackageId);
+            }
+            
+            if (maintenancePlan.isPresent()) {
+                checklistJson = maintenancePlan.get().getChecklistTemplate();
+                System.out.println("=== LOADED CHECKLIST TEMPLATE ===");
+                System.out.println("From maintenance_plan_id: " + maintenancePlan.get().getId());
+                System.out.println("Checklist JSON: " + (checklistJson != null ? checklistJson.substring(0, Math.min(100, checklistJson.length())) : "null"));
+                System.out.println("==================================");
+            } else {
+                System.out.println("⚠️ WARNING: No maintenance plan found for service package: " + servicePackageId);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ ERROR loading checklist template: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // 6. Tạo Service Order mới với technician và checklist
         // NOTE: Không lưu status ở đây, status được quản lý ở appointment.status
         String orderCode = "SO" + System.currentTimeMillis();
 
@@ -199,6 +229,7 @@ public class ServiceOrderService {
                 .appointment(appointment)
                 .orderCode(orderCode)
                 .technician(technician) // Lưu Staff (phù hợp DB FK: staff.id)
+                .checklist(checklistJson) // ⭐ Inject checklist từ maintenance_plans
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -233,12 +264,26 @@ public class ServiceOrderService {
         appointment.setTechnician(technician); // Gán technician vào appointment để hiển thị tên
         appointmentRepository.save(appointment);
 
+        // 7. Cập nhật trạng thái appointment thành ASSIGNED và gán technician
+        appointment.setStatus(ServiceAppointment.AppointmentStatus.ASSIGNED);
+        appointment.setTechnician(technician); // Gán technician vào appointment để hiển thị tên
+        appointmentRepository.save(appointment);
+
         System.out.println("=== APPOINTMENT UPDATED ===");
         System.out.println("Appointment status changed to: " + appointment.getStatus());
         System.out.println("Appointment technician set to: " + appointment.getTechnician().getUser().getFullName());
         System.out.println("===========================");
 
         return convertToResponse(savedOrder);
+    }
+
+    /**
+     * Get service order by appointment ID
+     */
+    public ServiceOrderResponse getServiceOrderByAppointmentId(UUID appointmentId) {
+        ServiceOrder serviceOrder = serviceOrderRepository.findByAppointmentId(appointmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
+        return convertToResponse(serviceOrder);
     }
 
     private ServiceOrderResponse convertToResponse(ServiceOrder serviceOrder) {

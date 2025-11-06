@@ -130,4 +130,32 @@ public class ServiceOrderController {
                 .result(response)
                 .build();
     }
+
+    /**
+     * ENDPOINT CHO TECHNICIAN - Lấy service orders có checklist
+     */
+    @GetMapping("/technician/me")
+    @Operation(summary = "Lấy service orders của technician [TECHNICIAN]",
+               description = "Technician lấy danh sách service orders được gán kèm theo checklist từ maintenance_plans")
+    public ApiResponse<List<ServiceOrderResponse>> getMyServiceOrders() {
+        // TODO: Get current user from JWT token
+        // For now, return all service orders
+        List<ServiceOrderResponse> orders = serviceOrderService.getAllServiceOrders();
+        return ApiResponse.<List<ServiceOrderResponse>>builder()
+                .message("Danh sách công việc của bạn")
+                .result(orders)
+                .build();
+    }
+
+    @GetMapping("/appointment/{appointmentId}")
+    @Operation(summary = "Lấy service order theo appointment ID",
+               description = "Lấy service order dựa trên appointment ID để hiển thị checklist")
+    public ApiResponse<ServiceOrderResponse> getServiceOrderByAppointmentId(@PathVariable UUID appointmentId) {
+        ServiceOrderResponse response = serviceOrderService.getServiceOrderByAppointmentId(appointmentId);
+        return ApiResponse.<ServiceOrderResponse>builder()
+                .message("Service order của appointment")
+                .result(response)
+                .build();
+    }
 }
+
