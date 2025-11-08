@@ -28,9 +28,15 @@ public class ServiceOrder {
     @Column(name = "order_code", unique = true)
     private String orderCode;
 
+    // WORKAROUND: DB constraint yêu cầu technician_id references users(id)
+    // Nhưng để dễ sử dụng trong code, ta map tới Staff và set technician_id thủ công
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "technician_id")
-    private Staff technician;  // FK trỏ đến staff.id (phù hợp với DB constraint: service_orders_technician_id_fkey)
+    @JoinColumn(name = "technician_id", insertable = false, updatable = false)
+    private Staff technician;  // Read-only, chỉ dùng để fetch data
+    
+    // Trường này sẽ lưu user.id vào database
+    @Column(name = "technician_id")
+    private UUID technicianUserId;
 
     // NOTE: Status được quản lý ở ServiceAppointment, không cần duplicate ở đây
     // ServiceOrder chỉ lưu thông tin chi tiết công việc (diagnosis, parts, cost...)

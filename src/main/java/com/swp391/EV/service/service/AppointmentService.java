@@ -125,13 +125,14 @@ public class AppointmentService {
                 && appointment.getActualCompletion() == null) {
                 appointment.setActualCompletion(LocalDateTime.now());
                 
-                // TỰ ĐỘNG TẠO INVOICE KHI HOÀN THÀNH
-                try {
-                    createInvoiceForCompletedAppointment(appointment);
-                } catch (Exception e) {
-                    // Log lỗi nhưng không làm fail toàn bộ transaction
-                    System.err.println("Failed to auto-create invoice for appointment " + appointment.getId() + ": " + e.getMessage());
-                }
+                // TỰ ĐỘNG TẠO INVOICE KHI HOÀN THÀNH - DISABLED
+                // Staff sẽ tạo invoice thủ công thay vì tự động
+                // try {
+                //     createInvoiceForCompletedAppointment(appointment);
+                // } catch (Exception e) {
+                //     // Log lỗi nhưng không làm fail toàn bộ transaction
+                //     System.err.println("Failed to auto-create invoice for appointment " + appointment.getId() + ": " + e.getMessage());
+                // }
             }
         }
         if (request.getNotes() != null) {

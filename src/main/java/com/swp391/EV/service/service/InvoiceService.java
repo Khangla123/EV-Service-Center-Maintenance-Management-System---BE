@@ -37,8 +37,8 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceResponse createInvoice(CreateInvoiceRequest request) {
-        // Verify service order exists
-        ServiceOrder serviceOrder = serviceOrderRepository.findById(request.getServiceOrderId())
+        // Fetch ServiceOrder with all necessary relationships to avoid lazy loading issues
+        ServiceOrder serviceOrder = serviceOrderRepository.findByIdWithRelations(request.getServiceOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
 
         // Get customer from service order
@@ -65,17 +65,22 @@ public class InvoiceService {
                 .build();
 
         invoice = invoiceRepository.save(invoice);
+        
+        // Fetch invoice again with all relationships to avoid lazy loading issues
+        invoice = invoiceRepository.findByIdWithRelations(invoice.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+        
         return mapToResponse(invoice);
     }
 
     public List<InvoiceResponse> getAllInvoices() {
-        return invoiceRepository.findAll().stream()
+        return invoiceRepository.findAllWithRelations().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     public InvoiceResponse getInvoiceById(UUID id) {
-        Invoice invoice = invoiceRepository.findById(id)
+        Invoice invoice = invoiceRepository.findByIdWithRelations(id)
                 .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
         return mapToResponse(invoice);
     }
@@ -88,7 +93,7 @@ public class InvoiceService {
         Customer customer = customerRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
 
-        return invoiceRepository.findByCustomerId(customer.getId()).stream()
+        return invoiceRepository.findByCustomerIdWithRelations(customer.getId()).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -153,12 +158,16 @@ public class InvoiceService {
             response.setServiceOrderId(invoice.getServiceOrder().getId());
             response.setOrderCode(invoice.getServiceOrder().getOrderCode());
             
-            // Get vehicle info from service order's appointment
-            if (invoice.getServiceOrder().getAppointment() != null 
-                && invoice.getServiceOrder().getAppointment().getVehicle() != null) {
-                response.setVehicleLicensePlate(
-                    invoice.getServiceOrder().getAppointment().getVehicle().getLicensePlate()
-                );
+            // Get appointment info
+            if (invoice.getServiceOrder().getAppointment() != null) {
+                response.setAppointmentId(invoice.getServiceOrder().getAppointment().getId());
+                
+                // Get vehicle info from appointment
+                if (invoice.getServiceOrder().getAppointment().getVehicle() != null) {
+                    response.setVehicleLicensePlate(
+                        invoice.getServiceOrder().getAppointment().getVehicle().getLicensePlate()
+                    );
+                }
             }
         }
 

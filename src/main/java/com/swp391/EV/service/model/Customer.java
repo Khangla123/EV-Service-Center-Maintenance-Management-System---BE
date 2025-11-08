@@ -41,7 +41,7 @@ public class Customer {
     private String address;
 
     @Column(name = "role")
-    private String role = "CUSTOMER";
+    private String role = "customer";
 
     @Column(name = "is_active")
     private boolean isActive = true;
@@ -89,7 +89,7 @@ public class Customer {
             totalSpent = BigDecimal.ZERO;
         }
         if (role == null) {
-            role = "CUSTOMER";
+            role = "customer";
         }
     }
 

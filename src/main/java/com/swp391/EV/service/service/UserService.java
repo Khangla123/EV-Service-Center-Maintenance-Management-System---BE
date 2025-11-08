@@ -59,7 +59,7 @@ public class UserService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
-                .role("CUSTOMER")
+                .role("customer")
                 .isActive(true)
                 .createdAt(java.time.OffsetDateTime.now())
                 .build();
@@ -67,7 +67,7 @@ public class UserService {
 
         // Tự động tạo Customer record cho user có role CUSTOMER
         
-        if ("CUSTOMER".equalsIgnoreCase(user.getRole())) {
+        if ("customer".equalsIgnoreCase(user.getRole())) {
             Customer customer = Customer.builder()
                     .userId(user.getId())
                     .username(user.getUsername())
@@ -204,6 +204,6 @@ public class UserService {
     }
 
     private boolean isValidRole(String role) {
-        return role.equals("ADMIN") || role.equals("CUSTOMER") || role.equals("TECHNICIAN") || role.equals("STAFF");
+        return role.equals("admin") || role.equals("customer") || role.equals("technician") || role.equals("staff");
     }
 }

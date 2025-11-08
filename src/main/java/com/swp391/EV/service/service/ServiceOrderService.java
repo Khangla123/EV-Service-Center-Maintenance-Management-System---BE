@@ -27,7 +27,7 @@ public class ServiceOrderService {
     private final MaintenancePlanRepository maintenancePlanRepository;
 
     public List<ServiceOrderResponse> getAllServiceOrders() {
-        return serviceOrderRepository.findAllWithTechnician().stream()
+        return serviceOrderRepository.findAll().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
@@ -42,10 +42,12 @@ public class ServiceOrderService {
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
 
         // Technician co the null khi tao moi (chua phan cong)
-        Staff technicianStaff = null;
+        UUID technicianUserId = null;
         if (request.getTechnicianId() != null) {
-            technicianStaff = staffRepository.findById(request.getTechnicianId())
+            // Tìm staff theo ID để kiểm tra và lấy user.id
+            Staff technicianStaff = staffRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+            technicianUserId = technicianStaff.getUser().getId();
         }
 
         // Generate order code
@@ -54,7 +56,7 @@ public class ServiceOrderService {
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
-                .technician(technicianStaff) // Lưu Staff (phù hợp với DB FK: staff.id)
+                .technicianUserId(technicianUserId) // Lưu user.id vào DB
                 // NOTE: Status removed - managed in appointment.status
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -82,7 +84,7 @@ public class ServiceOrderService {
         if (request.getTechnicianId() != null) {
             Staff technician = staffRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-            serviceOrder.setTechnician(technician); // Lưu Staff (phù hợp DB FK: staff.id)
+            serviceOrder.setTechnicianUserId(technician.getUser().getId()); // Lưu user.id vào DB
         }
         if (request.getStartTime() != null) {
             serviceOrder.setStartTime(request.getStartTime());
@@ -111,17 +113,25 @@ public class ServiceOrderService {
     /**
      * Phân công lại technician cho service order đã tồn tại
      * Chỉ dùng để thay đổi technician, KHÔNG tạo service order mới
+     * @param orderId ID của service order
+     * @param technicianId Có thể là USER_ID hoặc STAFF_ID - tự động detect
      */
     @Transactional
     public ServiceOrderResponse assignTechnician(UUID orderId, UUID technicianId) {
         ServiceOrder serviceOrder = serviceOrderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
 
-        // Lấy thông tin kỹ thuật viên từ bảng staff
-        Staff staff = staffRepository.findById(technicianId)
-                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+        // Thử tìm theo Staff.id trước
+        Optional<Staff> staffOpt = staffRepository.findById(technicianId);
+        
+        // Nếu không tìm thấy, thử tìm theo User.id
+        if (staffOpt.isEmpty()) {
+            staffOpt = staffRepository.findByUserId(technicianId);
+        }
+        
+        Staff staff = staffOpt.orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
 
-        serviceOrder.setTechnician(staff); // Lưu Staff (phù hợp DB FK: staff.id)
+        serviceOrder.setTechnician(staff); // Set Staff entity trực tiếp
         serviceOrder.setUpdatedAt(LocalDateTime.now());
 
         ServiceOrder updatedOrder = serviceOrderRepository.save(serviceOrder);
@@ -153,6 +163,7 @@ public class ServiceOrderService {
     */
 
     public List<ServiceOrderResponse> getTechnicianTasks(UUID technicianId) {
+        // technicianId ở đây là staffId (Staff.id)
         return serviceOrderRepository.findByTechnicianId(technicianId).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -170,27 +181,43 @@ public class ServiceOrderService {
         ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
 
+        System.out.println("=== VALIDATION CHECK ===");
+        System.out.println("Appointment ID: " + appointmentId);
+        System.out.println("Appointment Status: " + appointment.getStatus());
+        System.out.println("Required Status: CONFIRMED");
+
         // 2. Kiểm tra appointment đã được xác nhận chưa
         if (appointment.getStatus() != ServiceAppointment.AppointmentStatus.CONFIRMED) {
+            System.out.println("❌ ERROR: Appointment status is not CONFIRMED!");
+            System.out.println("   Current status: " + appointment.getStatus());
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         // 3. Kiểm tra appointment đã có service order chưa (tránh tạo trùng)
-        if (serviceOrderRepository.findByAppointmentId(appointmentId).isPresent()) {
+        boolean hasExistingOrder = serviceOrderRepository.findByAppointmentId(appointmentId).isPresent();
+        System.out.println("Has existing service order: " + hasExistingOrder);
+        
+        if (hasExistingOrder) {
+            System.out.println("❌ ERROR: Appointment already has a service order!");
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
+        
+        System.out.println("✅ Validation passed!");
+        System.out.println("========================");
 
         // 4. Lấy thông tin kỹ thuật viên
-        // CRITICAL: technicianId là USER_ID từ frontend, phải tìm staff theo user_id
-        Staff technician = staffRepository.findByUserId(technicianId)
+        // CRITICAL: technicianId là USER_ID từ frontend
+        Staff technicianStaff = staffRepository.findByUserId(technicianId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+        
+        UUID technicianUserId = technicianStaff.getUser().getId();
 
         // Log để debug
         System.out.println("=== DEBUG CREATE SERVICE ORDER ===");
         System.out.println("Input technicianId (user.id from FE): " + technicianId);
-        System.out.println("Found Staff.id: " + technician.getId());
-        System.out.println("Found Staff.user.id: " + technician.getUser().getId());
-        System.out.println("Will save technician_id to DB: " + technician.getId() + " (staff.id)");
+        System.out.println("Found Staff.id: " + technicianStaff.getId());
+        System.out.println("Found Staff.user.id: " + technicianUserId);
+        System.out.println("Will save technician_id to DB: " + technicianUserId + " (user.id) - CORRECT!");
         System.out.println("===================================");
 
         // 5. Load checklist template từ maintenance_plans
@@ -221,15 +248,13 @@ public class ServiceOrderService {
             e.printStackTrace();
         }
 
-        // 6. Tạo Service Order mới với technician và checklist
-        // NOTE: Không lưu status ở đây, status được quản lý ở appointment.status
+        // 5. Tạo Service Order mới với technician đã được phân công
         String orderCode = "SO" + System.currentTimeMillis();
 
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
-                .technician(technician) // Lưu Staff (phù hợp DB FK: staff.id)
-                .checklist(checklistJson) // ⭐ Inject checklist từ maintenance_plans
+                .technician(technicianStaff) // Set Staff entity trực tiếp
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -239,14 +264,8 @@ public class ServiceOrderService {
         System.out.println("  - orderCode: " + serviceOrder.getOrderCode());
         System.out.println("  - appointment.id: " + serviceOrder.getAppointment().getId());
         System.out.println("  - technician.id (staff.id): " + serviceOrder.getTechnician().getId());
-        System.out.println("  - technician.user.fullName: " + serviceOrder.getTechnician().getUser().getFullName());
         System.out.println("  - startTime: " + serviceOrder.getStartTime());
         System.out.println("  - endTime: " + serviceOrder.getEndTime());
-        System.out.println("  - checklist: " + serviceOrder.getChecklist());
-        System.out.println("  - diagnosis: " + serviceOrder.getDiagnosis());
-        System.out.println("  - workPerformed: " + serviceOrder.getWorkPerformed());
-        System.out.println("  - totalAmount: " + serviceOrder.getTotalAmount());
-        System.out.println("  - createdAt: " + serviceOrder.getCreatedAt());
         System.out.println("==================================");
 
         ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
@@ -259,19 +278,14 @@ public class ServiceOrderService {
         System.out.println("  - technician_id (FK to staff.id): " + savedOrder.getTechnician().getId());
         System.out.println("=================================");
 
-        // 6. Cập nhật trạng thái appointment thành ASSIGNED và gán technician
+        // 6. Cập nhật trạng thái appointment thành ASSIGNED và gán technician (Staff)
         appointment.setStatus(ServiceAppointment.AppointmentStatus.ASSIGNED);
-        appointment.setTechnician(technician); // Gán technician vào appointment để hiển thị tên
-        appointmentRepository.save(appointment);
-
-        // 7. Cập nhật trạng thái appointment thành ASSIGNED và gán technician
-        appointment.setStatus(ServiceAppointment.AppointmentStatus.ASSIGNED);
-        appointment.setTechnician(technician); // Gán technician vào appointment để hiển thị tên
+        appointment.setTechnician(technicianStaff); // Gán Staff vào appointment để hiển thị tên
         appointmentRepository.save(appointment);
 
         System.out.println("=== APPOINTMENT UPDATED ===");
         System.out.println("Appointment status changed to: " + appointment.getStatus());
-        System.out.println("Appointment technician set to: " + appointment.getTechnician().getUser().getFullName());
+        System.out.println("Appointment technician set to: " + technicianStaff.getUser().getFullName());
         System.out.println("===========================");
 
         return convertToResponse(savedOrder);
@@ -291,11 +305,16 @@ public class ServiceOrderService {
         response.setId(serviceOrder.getId());
         response.setAppointmentId(serviceOrder.getAppointment().getId());
         response.setOrderCode(serviceOrder.getOrderCode());
-        if (serviceOrder.getTechnician() != null) {
-            response.setTechnicianId(serviceOrder.getTechnician().getId()); // staff.id
-            // technician là Staff, lấy tên từ User
-            response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
+        
+        // Lấy thông tin technician từ technicianUserId
+        if (serviceOrder.getTechnicianUserId() != null) {
+            response.setTechnicianId(serviceOrder.getTechnicianUserId());
+            // Nếu có quan hệ technician được lazy load
+            if (serviceOrder.getTechnician() != null) {
+                response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
+            }
         }
+        
         // NOTE: Status được lấy từ appointment.status, không lưu ở service_order nữa
         // response.setStatus() - REMOVED
         response.setStartTime(serviceOrder.getStartTime());

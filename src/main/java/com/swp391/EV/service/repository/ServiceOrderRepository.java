@@ -18,26 +18,27 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, UUID
     // NOTE: Status removed from ServiceOrder - query appointment.status instead
     // List<ServiceOrder> findByStatus(ServiceOrder.ServiceStatus status);
 
-    @Query("SELECT so FROM ServiceOrder so " +
-           "LEFT JOIN FETCH so.technician t " +
-           "LEFT JOIN FETCH t.user " +
-           "WHERE so.technician.id = :technicianId")
+    // Query by technicianUserId (UUID column in service_orders table)
+    @Query("SELECT so FROM ServiceOrder so WHERE so.technicianUserId = :technicianId")
     List<ServiceOrder> findByTechnicianId(@Param("technicianId") UUID technicianId);
 
     @Query("SELECT so FROM ServiceOrder so " +
-           "LEFT JOIN FETCH so.technician t " +
-           "LEFT JOIN FETCH t.user " +
            "WHERE so.appointment.id = :appointmentId")
     Optional<ServiceOrder> findByAppointmentId(@Param("appointmentId") UUID appointmentId);
 
     @Query("SELECT so FROM ServiceOrder so " +
-           "LEFT JOIN FETCH so.technician t " +
-           "LEFT JOIN FETCH t.user " +
            "WHERE so.appointment.customer.id = :customerId")
     List<ServiceOrder> findByCustomerId(@Param("customerId") UUID customerId);
     
+    // Fetch ServiceOrder with all necessary relationships for invoice creation
     @Query("SELECT so FROM ServiceOrder so " +
+           "LEFT JOIN FETCH so.appointment a " +
+           "LEFT JOIN FETCH a.customer c " +
+           "LEFT JOIN FETCH a.vehicle v " +
            "LEFT JOIN FETCH so.technician t " +
-           "LEFT JOIN FETCH t.user")
-    List<ServiceOrder> findAllWithTechnician();
+           "LEFT JOIN FETCH t.user tu " +
+           "WHERE so.id = :id")
+    Optional<ServiceOrder> findByIdWithRelations(@Param("id") UUID id);
+    
+    List<ServiceOrder> findAll();
 }

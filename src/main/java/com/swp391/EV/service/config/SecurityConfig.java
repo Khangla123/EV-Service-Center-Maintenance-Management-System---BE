@@ -150,6 +150,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/payments/methods").permitAll() // phương thức thanh toán
                         .requestMatchers(HttpMethod.POST, "/api/payments/vnpay/create").permitAll() // tạo URL thanh toán VNPay
                         .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/callback").permitAll() // VNPay callback
+                        .requestMatchers(HttpMethod.POST, "/api/payments/mock/create").permitAll() // tạo URL thanh toán MOCK
+                        .requestMatchers(HttpMethod.POST, "/api/payments/mock/callback").permitAll() // MOCK callback
 
                         // Test endpoints
                         .requestMatchers("/api/test/**").permitAll() // test endpoints

@@ -6,6 +6,7 @@ import com.swp391.EV.service.dto.request.VerifyPaymentRequest;
 import com.swp391.EV.service.dto.response.PaymentResponse;
 import com.swp391.EV.service.service.PaymentService;
 import com.swp391.EV.service.service.VNPayService;
+import com.swp391.EV.service.service.MockPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final VNPayService vnPayService;
+    private final MockPaymentService mockPaymentService;
 
     @GetMapping
     @Operation(summary = "Danh sách thanh toán", description = "Payment history - Get all payments (STAFF/ADMIN)")
@@ -103,6 +105,39 @@ public class PaymentController {
                 .message(response.getStatus().toString().equals("PAID")
                         ? "Thanh toán thành công."
                         : "Thanh toán thất bại.")
+                .result(response)
+                .build();
+    }
+
+    // ========== MOCK PAYMENT ENDPOINTS (Thanh toán giả lập) ==========
+    
+    @PostMapping("/mock/create")
+    @Operation(summary = "Tạo URL thanh toán giả lập", description = "Create mock payment URL - Tạo link giả lập cho mục đích demo/testing")
+    public ApiResponse<String> createMockPayment(
+            @RequestParam UUID invoiceId,
+            @RequestParam long amount,
+            @RequestParam(required = false, defaultValue = "Thanh toán hóa đơn") String orderInfo) {
+
+        String mockPaymentUrl = mockPaymentService.createMockPaymentUrl(invoiceId, amount, orderInfo);
+
+        return ApiResponse.<String>builder()
+                .message("Tạo URL thanh toán giả lập thành công.")
+                .result(mockPaymentUrl)
+                .build();
+    }
+
+    @PostMapping("/mock/callback")
+    @Operation(summary = "Mock payment callback", description = "Handle mock payment callback - Xử lý kết quả thanh toán giả lập")
+    public ApiResponse<PaymentResponse> handleMockCallback(
+            @RequestParam String txnRef,
+            @RequestParam boolean success) {
+        
+        PaymentResponse response = mockPaymentService.processMockCallback(txnRef, success);
+        
+        return ApiResponse.<PaymentResponse>builder()
+                .message(response.getStatus().toString().equals("PAID")
+                        ? "Thanh toán giả lập thành công."
+                        : "Thanh toán giả lập thất bại.")
                 .result(response)
                 .build();
     }

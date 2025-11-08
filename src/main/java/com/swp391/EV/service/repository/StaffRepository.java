@@ -23,7 +23,7 @@ public interface StaffRepository extends JpaRepository<Staff, UUID> {
     @Query("SELECT s FROM Staff s " +
            "LEFT JOIN FETCH s.user " +
            "LEFT JOIN FETCH s.serviceCenter " +
-           "WHERE UPPER(s.user.role) IN ('STAFF', 'TECHNICIAN')")
+           "WHERE LOWER(s.user.role) IN ('staff', 'technician')")
     List<Staff> findAllStaffAndTechnicians();
 }
 

@@ -14,6 +14,7 @@ import java.util.UUID;
 public class InvoiceResponse {
     private UUID id;
     private UUID serviceOrderId;
+    private UUID appointmentId; // Added for easy filtering
     private String orderCode;
     private UUID customerId;
     private String customerName;

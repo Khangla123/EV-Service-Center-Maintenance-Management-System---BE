@@ -42,14 +42,14 @@ BEGIN
   
   IF v_service_center_id IS NULL THEN
     INSERT INTO service_centers (id, name, address, phone, email, capacity)
-    VALUES (gen_random_uuid(), 'Trung tâm bảo dưỡng EV', '123 Láng Hạ, Đống Đa, Hà Nội', '0241234567', 'contact@evservice.vn', 20)
+    VALUES (uuid_generate_v4(), 'Trung tâm bảo dưỡng EV', '123 Láng Hạ, Đống Đa, Hà Nội', '0241234567', 'contact@evservice.vn', 20)
     RETURNING id INTO v_service_center_id;
   END IF;
 
   -- Insert parts nếu chưa có
   INSERT INTO parts (id, service_center_id, part_code, name, description, category, unit_price, stock_quantity, min_stock_level, is_active)
   SELECT 
-    gen_random_uuid(),
+    uuid_generate_v4(),
     v_service_center_id,
     part_code,
     name,
@@ -90,8 +90,8 @@ INSERT INTO maintenance_plans (
   checklist_template, suggested_parts, is_active
 )
 SELECT 
-  gen_random_uuid(),
-  'adb69abd-07db-48d8-80a8-1a47b6227370',
+  uuid_generate_v4(),
+  'adb69abd-07db-48d8-80a8-1a47b6227370'::uuid,
   5000, 3,
   'Bảo dưỡng cơ bản mỗi 5,000 km hoặc 3 tháng',
   '[
@@ -120,7 +120,9 @@ SELECT
   true
 WHERE NOT EXISTS (
   SELECT 1 FROM maintenance_plans 
-  WHERE service_package_id = 'adb69abd-07db-48d8-80a8-1a47b6227370'
+  WHERE service_package_id = 'adb69abd-07db-48d8-80a8-1a47b6227370'::uuid
+) AND EXISTS (
+  SELECT 1 FROM service_packages WHERE id = 'adb69abd-07db-48d8-80a8-1a47b6227370'::uuid
 );
 
 -- 2. Bảo dưỡng toàn diện (f72b80b0-565d-4163-be8b-861cc76b19e3)
@@ -129,8 +131,8 @@ INSERT INTO maintenance_plans (
   checklist_template, suggested_parts, is_active
 )
 SELECT 
-  gen_random_uuid(),
-  'f72b80b0-565d-4163-be8b-861cc76b19e3',
+  uuid_generate_v4(),
+  'f72b80b0-565d-4163-be8b-861cc76b19e3'::uuid,
   10000, 6,
   'Bảo dưỡng toàn diện định kỳ',
   '[
@@ -170,7 +172,9 @@ SELECT
   true
 WHERE NOT EXISTS (
   SELECT 1 FROM maintenance_plans 
-  WHERE service_package_id = 'f72b80b0-565d-4163-be8b-861cc76b19e3'
+  WHERE service_package_id = 'f72b80b0-565d-4163-be8b-861cc76b19e3'::uuid
+) AND EXISTS (
+  SELECT 1 FROM service_packages WHERE id = 'f72b80b0-565d-4163-be8b-861cc76b19e3'::uuid
 );
 
 -- 3. Kiểm tra và bảo dưỡng pin (2327a863-d395-4fe8-8a53-bed121bc90ef)
@@ -179,8 +183,8 @@ INSERT INTO maintenance_plans (
   checklist_template, suggested_parts, is_active
 )
 SELECT 
-  gen_random_uuid(),
-  '2327a863-d395-4fe8-8a53-bed121bc90ef',
+  uuid_generate_v4(),
+  '2327a863-d395-4fe8-8a53-bed121bc90ef'::uuid,
   'Kiểm tra chuyên sâu hệ thống pin',
   '[
     {"title": "Chẩn đoán pin", "description": "Kiểm tra SOH, SOC, cân bằng cell", "order": 1, "isRequired": true, "estimatedMinutes": 30},
@@ -207,7 +211,9 @@ SELECT
   true
 WHERE NOT EXISTS (
   SELECT 1 FROM maintenance_plans 
-  WHERE service_package_id = '2327a863-d395-4fe8-8a53-bed121bc90ef'
+  WHERE service_package_id = '2327a863-d395-4fe8-8a53-bed121bc90ef'::uuid
+) AND EXISTS (
+  SELECT 1 FROM service_packages WHERE id = '2327a863-d395-4fe8-8a53-bed121bc90ef'::uuid
 );
 
 -- 4. Thay dầu phanh (de6970ba-4035-43a5-977a-96625bef310d)
@@ -216,8 +222,8 @@ INSERT INTO maintenance_plans (
   checklist_template, suggested_parts, is_active
 )
 SELECT 
-  gen_random_uuid(),
-  'de6970ba-4035-43a5-977a-96625bef310d',
+  uuid_generate_v4(),
+  'de6970ba-4035-43a5-977a-96625bef310d'::uuid,
   'Bảo dưỡng hệ thống phanh',
   '[
     {"title": "Kiểm tra má phanh", "description": "Đo độ dày má phanh", "order": 1, "isRequired": true, "estimatedMinutes": 15},
@@ -245,7 +251,9 @@ SELECT
   true
 WHERE NOT EXISTS (
   SELECT 1 FROM maintenance_plans 
-  WHERE service_package_id = 'de6970ba-4035-43a5-977a-96625bef310d'
+  WHERE service_package_id = 'de6970ba-4035-43a5-977a-96625bef310d'::uuid
+) AND EXISTS (
+  SELECT 1 FROM service_packages WHERE id = 'de6970ba-4035-43a5-977a-96625bef310d'::uuid
 );
 
 -- 5. Bảo dưỡng hệ thống điều hòa (3ab14de5-c822-4e55-b8c2-9b26bacdc473)
@@ -254,8 +262,8 @@ INSERT INTO maintenance_plans (
   checklist_template, suggested_parts, is_active
 )
 SELECT 
-  gen_random_uuid(),
-  '3ab14de5-c822-4e55-b8c2-9b26bacdc473',
+  uuid_generate_v4(),
+  '3ab14de5-c822-4e55-b8c2-9b26bacdc473'::uuid,
   'Vệ sinh và bảo dưỡng điều hòa',
   '[
     {"title": "Vệ sinh dàn lạnh", "description": "Vệ sinh dàn lạnh điều hòa", "order": 1, "isRequired": true, "estimatedMinutes": 20},
@@ -282,7 +290,9 @@ SELECT
   true
 WHERE NOT EXISTS (
   SELECT 1 FROM maintenance_plans 
-  WHERE service_package_id = '3ab14de5-c822-4e55-b8c2-9b26bacdc473'
+  WHERE service_package_id = '3ab14de5-c822-4e55-b8c2-9b26bacdc473'::uuid
+) AND EXISTS (
+  SELECT 1 FROM service_packages WHERE id = '3ab14de5-c822-4e55-b8c2-9b26bacdc473'::uuid
 );
 
 -- ============================================

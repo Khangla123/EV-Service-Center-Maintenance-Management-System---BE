@@ -43,9 +43,9 @@ public class StaffService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
 
-        // Validate and normalize role to UPPERCASE for PostgreSQL ENUM
-        String role = request.getRole().toUpperCase();
-        if (!role.equals("STAFF") && !role.equals("TECHNICIAN")) {
+        // Validate and normalize role to lowercase
+        String role = request.getRole().toLowerCase();
+        if (!role.equals("staff") && !role.equals("technician")) {
             throw new AppException(ErrorCode.INVALID_ROLE);
         }
 
@@ -97,6 +97,7 @@ public class StaffService {
         List<Staff> staffList = staffRepository.findAllStaffAndTechnicians();
         return staffList.stream()
                 .map(this::mapToResponse)
+                .filter(response -> response != null) // Filter out null responses (staff without user)
                 .collect(Collectors.toList());
     }
 
@@ -240,6 +241,12 @@ public class StaffService {
 
     private StaffResponse mapToResponse(Staff staff) {
         User user = staff.getUser();
+        
+        // Safety check - nếu staff không có user thì skip (data corrupt)
+        if (user == null) {
+            System.err.println("⚠️ WARNING: Staff " + staff.getId() + " has no associated User! Skipping...");
+            return null;
+        }
         
         // Calculate current real-time status
         String currentStatus = calculateCurrentStatus(staff);

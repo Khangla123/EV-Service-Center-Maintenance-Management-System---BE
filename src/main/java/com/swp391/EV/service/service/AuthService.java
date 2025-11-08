@@ -121,7 +121,7 @@ public class AuthService {
                 .issuer("Khanglv")
                 .issueTime(Date.from(Instant.now()))
                 .expirationTime(Date.from(Instant.now().plus(EXPIRATION_DURATION, ChronoUnit.SECONDS)))
-                .claim("scope", user.getRole().toUpperCase())
+                .claim("scope", user.getRole().toLowerCase())
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
