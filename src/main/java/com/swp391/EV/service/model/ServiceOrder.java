@@ -51,6 +51,9 @@ public class ServiceOrder {
     private String checklist; // JSON string
 
     @Column(columnDefinition = "TEXT")
+    private String issues; // JSON string - list of detected issues/problems
+
+    @Column(columnDefinition = "TEXT")
     private String diagnosis;
 
     @Column(name = "work_performed", columnDefinition = "TEXT")

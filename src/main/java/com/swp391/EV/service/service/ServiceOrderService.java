@@ -177,6 +177,12 @@ public class ServiceOrderService {
      */
     @Transactional
     public ServiceOrderResponse createServiceOrderFromAppointment(UUID appointmentId, UUID technicianId) {
+        System.out.println("===========================");
+        System.out.println("🚀 CREATE SERVICE ORDER FROM APPOINTMENT - START");
+        System.out.println("Input appointmentId: " + appointmentId);
+        System.out.println("Input technicianId: " + technicianId);
+        System.out.println("===========================");
+        
         // 1. Kiểm tra Appointment có tồn tại và đã CONFIRMED chưa
         ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
@@ -184,6 +190,8 @@ public class ServiceOrderService {
         System.out.println("=== VALIDATION CHECK ===");
         System.out.println("Appointment ID: " + appointmentId);
         System.out.println("Appointment Status: " + appointment.getStatus());
+        System.out.println("Appointment Customer: " + appointment.getCustomer().getUsername());
+        System.out.println("Appointment Service Package: " + appointment.getServicePackage().getName());
         System.out.println("Required Status: CONFIRMED");
 
         // 2. Kiểm tra appointment đã được xác nhận chưa
@@ -255,6 +263,7 @@ public class ServiceOrderService {
                 .appointment(appointment)
                 .orderCode(orderCode)
                 .technician(technicianStaff) // Set Staff entity trực tiếp
+                .checklist(checklistJson) // Set checklist template từ maintenance_plans
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -300,6 +309,30 @@ public class ServiceOrderService {
         return convertToResponse(serviceOrder);
     }
 
+    public ServiceOrderResponse updateIssues(UUID serviceOrderId, String issuesJson) {
+        System.out.println("===========================");
+        System.out.println("🔍 UPDATE ISSUES - START");
+        System.out.println("Service Order ID: " + serviceOrderId);
+        System.out.println("Issues JSON received: " + issuesJson);
+        
+        ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
+        
+        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        System.out.println("📝 Old issues: " + serviceOrder.getIssues());
+        
+        serviceOrder.setIssues(issuesJson);
+        serviceOrder.setUpdatedAt(LocalDateTime.now());
+        
+        ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
+        
+        System.out.println("💾 New issues saved: " + savedOrder.getIssues());
+        System.out.println("✅ UPDATE ISSUES - COMPLETED");
+        System.out.println("===========================");
+        
+        return convertToResponse(savedOrder);
+    }
+
     private ServiceOrderResponse convertToResponse(ServiceOrder serviceOrder) {
         ServiceOrderResponse response = new ServiceOrderResponse();
         response.setId(serviceOrder.getId());
@@ -310,8 +343,13 @@ public class ServiceOrderService {
         if (serviceOrder.getTechnicianUserId() != null) {
             response.setTechnicianId(serviceOrder.getTechnicianUserId());
             // Nếu có quan hệ technician được lazy load
-            if (serviceOrder.getTechnician() != null) {
-                response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
+            try {
+                if (serviceOrder.getTechnician() != null) {
+                    response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
+                }
+            } catch (Exception e) {
+                // LazyInitializationException - skip technician name
+                response.setTechnicianName("Unknown");
             }
         }
         
@@ -320,6 +358,7 @@ public class ServiceOrderService {
         response.setStartTime(serviceOrder.getStartTime());
         response.setEndTime(serviceOrder.getEndTime());
         response.setChecklist(serviceOrder.getChecklist());
+        response.setIssues(serviceOrder.getIssues());
         response.setDiagnosis(serviceOrder.getDiagnosis());
         response.setWorkPerformed(serviceOrder.getWorkPerformed());
         response.setTotalAmount(serviceOrder.getTotalAmount());

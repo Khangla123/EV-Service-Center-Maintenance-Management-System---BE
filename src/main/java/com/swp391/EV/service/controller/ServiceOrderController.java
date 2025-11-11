@@ -157,5 +157,19 @@ public class ServiceOrderController {
                 .result(response)
                 .build();
     }
+
+    @PutMapping("/{id}/issues")
+    @Operation(summary = "Cập nhật vấn đề phát hiện [TECHNICIAN]",
+               description = "Technician cập nhật danh sách vấn đề phát hiện trong quá trình kiểm tra. " +
+                            "Format: JSON array [{issue, severity, recommendation}]")
+    public ApiResponse<ServiceOrderResponse> updateIssues(
+            @PathVariable UUID id,
+            @RequestBody String issuesJson) {
+        ServiceOrderResponse response = serviceOrderService.updateIssues(id, issuesJson);
+        return ApiResponse.<ServiceOrderResponse>builder()
+                .message("Cập nhật vấn đề phát hiện thành công")
+                .result(response)
+                .build();
+    }
 }
 

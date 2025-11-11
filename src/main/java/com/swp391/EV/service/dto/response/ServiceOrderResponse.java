@@ -19,6 +19,7 @@ public class ServiceOrderResponse {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String checklist;
+    private String issues; // JSON string - list of detected issues/problems
     private String diagnosis;
     private String workPerformed;
     private BigDecimal totalAmount;
