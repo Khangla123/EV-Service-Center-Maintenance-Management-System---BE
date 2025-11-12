@@ -12,6 +12,8 @@ import com.swp391.EV.service.model.User;
 import com.swp391.EV.service.repository.CustomerRepository;
 import com.swp391.EV.service.repository.InvoiceRepository;
 import com.swp391.EV.service.repository.ServiceOrderRepository;
+import com.swp391.EV.service.repository.ServiceOrderPartRepository;
+import com.swp391.EV.service.repository.ServiceSuggestionRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.security.core.Authentication;
@@ -33,6 +35,8 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final ServiceOrderRepository serviceOrderRepository;
     private final CustomerRepository customerRepository;
+    private final ServiceOrderPartRepository serviceOrderPartRepository;
+    private final ServiceSuggestionRepository serviceSuggestionRepository;
     private final ModelMapper modelMapper;
 
     @Transactional
@@ -47,10 +51,58 @@ public class InvoiceService {
         // Generate invoice number
         String invoiceNumber = generateInvoiceNumber();
 
+        // Calculate subtotal from service order
+        BigDecimal subtotal = request.getSubtotal();
+        
+        // If subtotal not provided, calculate from service package + parts
+        if (subtotal == null || subtotal.compareTo(BigDecimal.ZERO) == 0) {
+            System.out.println("===========================");
+            System.out.println("💰 CALCULATING INVOICE AMOUNT");
+            
+            // 1. Get service package price
+            BigDecimal servicePrice = BigDecimal.ZERO;
+            if (serviceOrder.getAppointment() != null 
+                && serviceOrder.getAppointment().getServicePackage() != null) {
+                servicePrice = serviceOrder.getAppointment().getServicePackage().getPrice();
+                System.out.println("Service package price: " + servicePrice);
+            }
+            
+            // 2. Get parts total from service_order_parts
+            BigDecimal partsTotal = serviceOrderPartRepository.findByServiceOrderId(serviceOrder.getId())
+                .stream()
+                .map(part -> {
+                    BigDecimal partTotal = part.getTotalPrice();
+                    System.out.println("Part: " + part.getPart().getName() 
+                        + " x " + part.getQuantity() 
+                        + " = " + partTotal);
+                    return partTotal;
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            System.out.println("Parts total: " + partsTotal);
+            
+            // 3. Get approved service suggestions total
+            BigDecimal suggestionsTotal = serviceSuggestionRepository
+                .findByServiceOrderIdAndStatus(serviceOrder.getId(), 
+                    com.swp391.EV.service.model.ServiceSuggestion.SuggestionStatus.APPROVED)
+                .stream()
+                .map(suggestion -> {
+                    BigDecimal suggestionCost = suggestion.getEstimatedCost();
+                    System.out.println("Approved suggestion: " + suggestion.getServiceName() 
+                        + " = " + suggestionCost);
+                    return suggestionCost;
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            System.out.println("Approved suggestions total: " + suggestionsTotal);
+            
+            subtotal = servicePrice.add(partsTotal).add(suggestionsTotal);
+            System.out.println("Subtotal (service + parts + approved suggestions): " + subtotal);
+            System.out.println("===========================");
+        }
+
         // Calculate total amount
         BigDecimal taxAmount = request.getTaxAmount() != null ? request.getTaxAmount() : BigDecimal.ZERO;
         BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
-        BigDecimal totalAmount = request.getSubtotal().add(taxAmount).subtract(discountAmount);
+        BigDecimal totalAmount = subtotal.add(taxAmount).subtract(discountAmount);
 
         Invoice invoice = Invoice.builder()
                 .serviceOrder(serviceOrder)

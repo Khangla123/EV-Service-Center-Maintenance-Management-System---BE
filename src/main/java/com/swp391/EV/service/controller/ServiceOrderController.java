@@ -4,7 +4,6 @@ import com.swp391.EV.service.dto.ApiResponse;
 import com.swp391.EV.service.dto.request.CreateServiceOrderRequest;
 import com.swp391.EV.service.dto.request.UpdateServiceOrderRequest;
 import com.swp391.EV.service.dto.response.ServiceOrderResponse;
-import com.swp391.EV.service.model.ServiceOrder;
 import com.swp391.EV.service.service.ServiceOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -169,6 +168,92 @@ public class ServiceOrderController {
         return ApiResponse.<ServiceOrderResponse>builder()
                 .message("Cập nhật vấn đề phát hiện thành công")
                 .result(response)
+                .build();
+    }
+
+    @PostMapping("/{id}/parts")
+    @Operation(summary = "Thêm phụ tùng đã sử dụng [TECHNICIAN]",
+               description = "Technician thêm phụ tùng đã sử dụng trong quá trình bảo dưỡng. " +
+                            "Format: JSON array [{partCode, partName, quantity, unit}]")
+    public ApiResponse<ServiceOrderResponse> addPartsUsed(
+            @PathVariable UUID id,
+            @RequestBody String partsJson) {
+        ServiceOrderResponse response = serviceOrderService.addPartsUsed(id, partsJson);
+        return ApiResponse.<ServiceOrderResponse>builder()
+                .message("Thêm phụ tùng thành công")
+                .result(response)
+                .build();
+    }
+
+    @GetMapping("/{id}/parts")
+    @Operation(summary = "Lấy danh sách phụ tùng đã sử dụng",
+               description = "Lấy chi tiết tất cả phụ tùng đã sử dụng cho service order")
+    public ApiResponse<java.util.List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse>> getPartsUsed(@PathVariable UUID id) {
+        java.util.List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse> parts = serviceOrderService.getPartsUsed(id);
+        return ApiResponse.<java.util.List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse>>builder()
+                .message("Danh sách phụ tùng đã sử dụng")
+                .result(parts)
+                .build();
+    }
+
+    @GetMapping("/{id}/parts/count")
+    @Operation(summary = "Đếm phụ tùng đã sử dụng",
+               description = "Đếm số lượng loại phụ tùng đã sử dụng cho service order")
+    public ApiResponse<Integer> getPartsUsedCount(@PathVariable UUID id) {
+        int count = serviceOrderService.getPartsUsedCount(id);
+        return ApiResponse.<Integer>builder()
+                .message("Số loại phụ tùng đã sử dụng")
+                .result(count)
+                .build();
+    }
+
+    @GetMapping("/{id}/parts/summary")
+    @Operation(summary = "Lấy tóm tắt phụ tùng (count + total)",
+               description = "Lấy số lượng và tổng tiền phụ tùng đã sử dụng")
+    public ApiResponse<java.util.Map<String, Object>> getPartsUsedSummary(@PathVariable UUID id) {
+        java.util.Map<String, Object> summary = serviceOrderService.getPartsUsedSummary(id);
+        return ApiResponse.<java.util.Map<String, Object>>builder()
+                .message("Tóm tắt phụ tùng đã sử dụng")
+                .result(summary)
+                .build();
+    }
+
+    @PostMapping("/{id}/suggestions")
+    @Operation(summary = "Thêm đề xuất dịch vụ [TECHNICIAN]",
+               description = "Technician đề xuất dịch vụ bổ sung khi phát hiện vấn đề khác. " +
+                            "Format: JSON {serviceName, reason, estimatedCost}")
+    public ApiResponse<ServiceOrderResponse> addServiceSuggestion(
+            @PathVariable UUID id,
+            @RequestBody String suggestionJson) {
+        ServiceOrderResponse response = serviceOrderService.addServiceSuggestion(id, suggestionJson);
+        return ApiResponse.<ServiceOrderResponse>builder()
+                .message("Thêm đề xuất dịch vụ thành công")
+                .result(response)
+                .build();
+    }
+
+    @GetMapping("/{id}/suggestions")
+    @Operation(summary = "Lấy danh sách đề xuất dịch vụ",
+               description = "Lấy tất cả đề xuất dịch vụ của service order (return DTO)")
+    public ApiResponse<List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse>> getServiceSuggestions(
+            @PathVariable UUID id) {
+        List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse> suggestions = serviceOrderService.getServiceSuggestions(id);
+        return ApiResponse.<List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse>>builder()
+                .message("Danh sách đề xuất dịch vụ")
+                .result(suggestions)
+                .build();
+    }
+
+    @PutMapping("/suggestions/{suggestionId}/status")
+    @Operation(summary = "Cập nhật trạng thái đề xuất [STAFF/CUSTOMER]",
+               description = "Chấp nhận hoặc từ chối đề xuất dịch vụ. Status: APPROVED/REJECTED")
+    public ApiResponse<com.swp391.EV.service.model.ServiceSuggestion> updateSuggestionStatus(
+            @PathVariable UUID suggestionId,
+            @RequestParam com.swp391.EV.service.model.ServiceSuggestion.SuggestionStatus status) {
+        com.swp391.EV.service.model.ServiceSuggestion suggestion = serviceOrderService.updateSuggestionStatus(suggestionId, status);
+        return ApiResponse.<com.swp391.EV.service.model.ServiceSuggestion>builder()
+                .message("Cập nhật trạng thái đề xuất thành công")
+                .result(suggestion)
                 .build();
     }
 }

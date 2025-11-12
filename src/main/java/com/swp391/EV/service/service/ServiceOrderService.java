@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +26,9 @@ public class ServiceOrderService {
     private final ServiceAppointmentRepository appointmentRepository;
     private final StaffRepository staffRepository;
     private final MaintenancePlanRepository maintenancePlanRepository;
+    private final ServiceOrderPartRepository serviceOrderPartRepository;
+    private final PartRepository partRepository;
+    private final ServiceSuggestionRepository serviceSuggestionRepository;
 
     public List<ServiceOrderResponse> getAllServiceOrders() {
         return serviceOrderRepository.findAll().stream()
@@ -331,6 +335,285 @@ public class ServiceOrderService {
         System.out.println("===========================");
         
         return convertToResponse(savedOrder);
+    }
+
+    /**
+     * Add parts used to service order
+     * @param serviceOrderId Service order ID
+     * @param partsJson JSON array: [{"partCode": "PT001", "partName": "...", "quantity": 2, "unit": "cái"}]
+     */
+    @Transactional
+    public ServiceOrderResponse addPartsUsed(UUID serviceOrderId, String partsJson) {
+        System.out.println("===========================");
+        System.out.println("🔧 ADD PARTS USED - START");
+        System.out.println("Service Order ID: " + serviceOrderId);
+        System.out.println("Parts JSON received: " + partsJson);
+        
+        ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
+        
+        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        
+        try {
+            // Parse JSON to list of part info
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.List<java.util.Map<String, Object>> partsList = mapper.readValue(
+                partsJson, 
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
+            );
+            
+            System.out.println("📦 Parsed " + partsList.size() + " parts");
+            
+            for (java.util.Map<String, Object> partInfo : partsList) {
+                String partCode = (String) partInfo.get("partCode");
+                Integer quantity = (Integer) partInfo.get("quantity");
+                
+                System.out.println("🔍 Processing part: " + partCode + " x " + quantity);
+                
+                // Find part by code
+                Part part = partRepository.findByPartCode(partCode)
+                        .orElseThrow(() -> new AppException(ErrorCode.PART_NOT_FOUND));
+                
+                System.out.println("✅ Found part: " + part.getName() + " (ID: " + part.getId() + ")");
+                System.out.println("💰 Unit price: " + part.getUnitPrice());
+                
+                // Create service_order_part record
+                ServiceOrderPart orderPart = ServiceOrderPart.builder()
+                        .serviceOrder(serviceOrder)
+                        .part(part)
+                        .quantity(quantity)
+                        .unitPrice(part.getUnitPrice())
+                        .createdAt(LocalDateTime.now())
+                        .build();
+                
+                serviceOrderPartRepository.save(orderPart);
+                System.out.println("✅ Saved service_order_part record");
+                
+                // Update part stock quantity
+                int newStock = part.getStockQuantity() - quantity;
+                part.setStockQuantity(newStock);
+                partRepository.save(part);
+                System.out.println("📦 Updated stock: " + (part.getStockQuantity() + quantity) + " -> " + newStock);
+            }
+            
+            System.out.println("✅ ADD PARTS USED - COMPLETED");
+            System.out.println("===========================");
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error parsing/saving parts: " + e.getMessage());
+            e.printStackTrace();
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        return convertToResponse(serviceOrder);
+    }
+
+    /**
+     * Get parts used for a service order (Simple version - return count only)
+     * @param serviceOrderId Service order ID
+     * @return Count of parts used
+     */
+    public int getPartsUsedCount(UUID serviceOrderId) {
+        System.out.println("===========================");
+        System.out.println("🔧 GET PARTS USED COUNT - START");
+        System.out.println("Service Order ID: " + serviceOrderId);
+        
+        ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
+        
+        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        
+        List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
+        int count = parts.size();
+        
+        System.out.println("📦 Found " + count + " parts");
+        System.out.println("✅ GET PARTS USED COUNT - COMPLETED");
+        System.out.println("===========================");
+        
+        return count;
+    }
+
+    /**
+     * Get parts summary (count + total price)
+     * @param serviceOrderId Service order ID
+     * @return Map with "count" and "total"
+     */
+    public java.util.Map<String, Object> getPartsUsedSummary(UUID serviceOrderId) {
+        System.out.println("===========================");
+        System.out.println("💰 GET PARTS SUMMARY - START");
+        System.out.println("Service Order ID: " + serviceOrderId);
+        
+        ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
+        
+        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        
+        List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
+        int count = parts.size();
+        
+        BigDecimal total = parts.stream()
+                .map(ServiceOrderPart::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        System.out.println("📦 Found " + count + " parts, Total: " + total);
+        System.out.println("✅ GET PARTS SUMMARY - COMPLETED");
+        System.out.println("===========================");
+        
+        return java.util.Map.of("count", count, "total", total);
+    }
+
+    /**
+     * Get detailed list of parts used
+     * @param serviceOrderId Service order ID
+     * @return List of ServiceOrderPartResponse
+     */
+    public List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse> getPartsUsed(UUID serviceOrderId) {
+        System.out.println("===========================");
+        System.out.println("🔧 GET PARTS LIST - START");
+        System.out.println("Service Order ID: " + serviceOrderId);
+        
+        ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
+        
+        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        
+        List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
+        System.out.println("📦 Found " + parts.size() + " parts");
+        
+        List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse> response = new java.util.ArrayList<>();
+        for (ServiceOrderPart sop : parts) {
+            Part partEntity = sop.getPart();
+            com.swp391.EV.service.dto.response.ServiceOrderPartResponse dto = 
+                com.swp391.EV.service.dto.response.ServiceOrderPartResponse.builder()
+                    .id(sop.getId())
+                    .partCode(partEntity != null ? partEntity.getPartCode() : null)
+                    .partName(partEntity != null ? partEntity.getName() : null)
+                    .quantity(sop.getQuantity())
+                    .unitPrice(sop.getUnitPrice())
+                    .totalPrice(sop.getTotalPrice())
+                    .build();
+            response.add(dto);
+        }
+        
+        System.out.println("✅ GET PARTS LIST - COMPLETED");
+        System.out.println("===========================");
+        
+        return response;
+    }
+
+    /**
+     * Add service suggestion (recommended additional service)
+     * @param serviceOrderId Service order ID
+     * @param suggestionJson JSON: {"serviceName": "...", "reason": "...", "estimatedCost": 500000}
+     */
+    @Transactional
+    public ServiceOrderResponse addServiceSuggestion(UUID serviceOrderId, String suggestionJson) {
+        System.out.println("===========================");
+        System.out.println("💡 ADD SERVICE SUGGESTION - START");
+        System.out.println("Service Order ID: " + serviceOrderId);
+        System.out.println("Suggestion JSON received: " + suggestionJson);
+        
+        ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
+        
+        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        
+        try {
+            // Parse JSON to suggestion info
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.Map<String, Object> suggestionData = mapper.readValue(
+                suggestionJson, 
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {}
+            );
+            
+            String serviceName = (String) suggestionData.get("serviceName");
+            String reason = (String) suggestionData.get("reason");
+            Object costObj = suggestionData.get("estimatedCost");
+            
+            // Handle estimatedCost - could be String or Number
+            BigDecimal estimatedCost = BigDecimal.ZERO;
+            if (costObj != null) {
+                if (costObj instanceof Number) {
+                    estimatedCost = BigDecimal.valueOf(((Number) costObj).doubleValue());
+                } else if (costObj instanceof String) {
+                    // Remove any non-numeric characters except dot
+                    String costStr = ((String) costObj).replaceAll("[^0-9.]", "");
+                    estimatedCost = new BigDecimal(costStr);
+                }
+            }
+            
+            System.out.println("📝 Service: " + serviceName);
+            System.out.println("📝 Reason: " + reason);
+            System.out.println("💰 Estimated cost: " + estimatedCost);
+            
+            // Create service suggestion record
+            ServiceSuggestion suggestion = ServiceSuggestion.builder()
+                    .serviceOrder(serviceOrder)
+                    .serviceName(serviceName)
+                    .reason(reason)
+                    .estimatedCost(estimatedCost)
+                    .status(ServiceSuggestion.SuggestionStatus.PENDING)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+            
+            serviceSuggestionRepository.save(suggestion);
+            System.out.println("✅ Saved service suggestion");
+            
+            System.out.println("✅ ADD SERVICE SUGGESTION - COMPLETED");
+            System.out.println("===========================");
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error parsing/saving suggestion: " + e.getMessage());
+            e.printStackTrace();
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        return convertToResponse(serviceOrder);
+    }
+
+    /**
+     * Get service suggestions for a service order (return DTO to avoid lazy loading)
+     */
+    public List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse> getServiceSuggestions(UUID serviceOrderId) {
+        System.out.println("===========================");
+        System.out.println("📋 GET SERVICE SUGGESTIONS - START");
+        System.out.println("Service Order ID: " + serviceOrderId);
+        
+        List<ServiceSuggestion> suggestions = serviceSuggestionRepository.findByServiceOrderId(serviceOrderId);
+        
+        System.out.println("📦 Found " + suggestions.size() + " suggestions");
+        
+        List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse> responses = suggestions.stream()
+                .map(s -> com.swp391.EV.service.dto.response.ServiceSuggestionResponse.builder()
+                        .id(s.getId())
+                        .serviceName(s.getServiceName())
+                        .reason(s.getReason())
+                        .estimatedCost(s.getEstimatedCost())
+                        .status(s.getStatus())
+                        .createdAt(s.getCreatedAt())
+                        .updatedAt(s.getUpdatedAt())
+                        .build())
+                .collect(Collectors.toList());
+        
+        System.out.println("✅ GET SERVICE SUGGESTIONS - COMPLETED");
+        System.out.println("===========================");
+        
+        return responses;
+    }
+
+    /**
+     * Update suggestion status (APPROVED/REJECTED)
+     */
+    @Transactional
+    public ServiceSuggestion updateSuggestionStatus(UUID suggestionId, ServiceSuggestion.SuggestionStatus status) {
+        ServiceSuggestion suggestion = serviceSuggestionRepository.findById(suggestionId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST));
+        
+        suggestion.setStatus(status);
+        suggestion.setUpdatedAt(LocalDateTime.now());
+        
+        return serviceSuggestionRepository.save(suggestion);
     }
 
     private ServiceOrderResponse convertToResponse(ServiceOrder serviceOrder) {
