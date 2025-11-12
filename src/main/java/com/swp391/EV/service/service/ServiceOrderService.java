@@ -8,6 +8,7 @@ import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.*;
 import com.swp391.EV.service.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +21,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ServiceOrderService {
+
+    // Constants for log messages
+    private static final String SERVICE_ORDER_FOUND = "Service Order found: {}";
+    private static final String SERVICE_ORDER_ID_LOG = "Service Order ID: {}";
 
     private final ServiceOrderRepository serviceOrderRepository;
     private final ServiceAppointmentRepository appointmentRepository;
@@ -31,7 +37,10 @@ public class ServiceOrderService {
     private final ServiceSuggestionRepository serviceSuggestionRepository;
 
     public List<ServiceOrderResponse> getAllServiceOrders() {
-        return serviceOrderRepository.findAll().stream()
+        // Use JOIN FETCH query to eagerly load customer and vehicle
+        List<ServiceOrder> serviceOrders = serviceOrderRepository.findAllWithCustomerAndVehicle();
+        
+        return serviceOrders.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
@@ -181,41 +190,37 @@ public class ServiceOrderService {
      */
     @Transactional
     public ServiceOrderResponse createServiceOrderFromAppointment(UUID appointmentId, UUID technicianId) {
-        System.out.println("===========================");
-        System.out.println("🚀 CREATE SERVICE ORDER FROM APPOINTMENT - START");
-        System.out.println("Input appointmentId: " + appointmentId);
-        System.out.println("Input technicianId: " + technicianId);
-        System.out.println("===========================");
+        log.info("=== CREATE SERVICE ORDER FROM APPOINTMENT - START ===");
+        log.info("Input appointmentId: {}", appointmentId);
+        log.info("Input technicianId: {}", technicianId);
         
         // 1. Kiểm tra Appointment có tồn tại và đã CONFIRMED chưa
         ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
 
-        System.out.println("=== VALIDATION CHECK ===");
-        System.out.println("Appointment ID: " + appointmentId);
-        System.out.println("Appointment Status: " + appointment.getStatus());
-        System.out.println("Appointment Customer: " + appointment.getCustomer().getUsername());
-        System.out.println("Appointment Service Package: " + appointment.getServicePackage().getName());
-        System.out.println("Required Status: CONFIRMED");
+        log.info("=== VALIDATION CHECK ===");
+        log.info("Appointment ID: {}", appointmentId);
+        log.info("Appointment Status: {}", appointment.getStatus());
+        log.info("Appointment Customer: {}", appointment.getCustomer().getUsername());
+        log.info("Appointment Service Package: {}", appointment.getServicePackage().getName());
+        log.info("Required Status: CONFIRMED");
 
         // 2. Kiểm tra appointment đã được xác nhận chưa
         if (appointment.getStatus() != ServiceAppointment.AppointmentStatus.CONFIRMED) {
-            System.out.println("❌ ERROR: Appointment status is not CONFIRMED!");
-            System.out.println("   Current status: " + appointment.getStatus());
+            log.error("Appointment status is not CONFIRMED! Current status: {}", appointment.getStatus());
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         // 3. Kiểm tra appointment đã có service order chưa (tránh tạo trùng)
         boolean hasExistingOrder = serviceOrderRepository.findByAppointmentId(appointmentId).isPresent();
-        System.out.println("Has existing service order: " + hasExistingOrder);
+        log.info("Has existing service order: {}", hasExistingOrder);
         
         if (hasExistingOrder) {
-            System.out.println("❌ ERROR: Appointment already has a service order!");
+            log.error("Appointment already has a service order!");
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         
-        System.out.println("✅ Validation passed!");
-        System.out.println("========================");
+        log.info("Validation passed!");
 
         // 4. Lấy thông tin kỹ thuật viên
         // CRITICAL: technicianId là USER_ID từ frontend
@@ -225,12 +230,11 @@ public class ServiceOrderService {
         UUID technicianUserId = technicianStaff.getUser().getId();
 
         // Log để debug
-        System.out.println("=== DEBUG CREATE SERVICE ORDER ===");
-        System.out.println("Input technicianId (user.id from FE): " + technicianId);
-        System.out.println("Found Staff.id: " + technicianStaff.getId());
-        System.out.println("Found Staff.user.id: " + technicianUserId);
-        System.out.println("Will save technician_id to DB: " + technicianUserId + " (user.id) - CORRECT!");
-        System.out.println("===================================");
+        log.debug("=== DEBUG CREATE SERVICE ORDER ===");
+        log.debug("Input technicianId (user.id from FE): {}", technicianId);
+        log.debug("Found Staff.id: {}", technicianStaff.getId());
+        log.debug("Found Staff.user.id: {}", technicianUserId);
+        log.debug("Will save technician_id to DB: {} (user.id)", technicianUserId);
 
         // 5. Load checklist template từ maintenance_plans
         String checklistJson = null;
@@ -248,16 +252,14 @@ public class ServiceOrderService {
             
             if (maintenancePlan.isPresent()) {
                 checklistJson = maintenancePlan.get().getChecklistTemplate();
-                System.out.println("=== LOADED CHECKLIST TEMPLATE ===");
-                System.out.println("From maintenance_plan_id: " + maintenancePlan.get().getId());
-                System.out.println("Checklist JSON: " + (checklistJson != null ? checklistJson.substring(0, Math.min(100, checklistJson.length())) : "null"));
-                System.out.println("==================================");
+                log.info("=== LOADED CHECKLIST TEMPLATE ===");
+                log.info("From maintenance_plan_id: {}", maintenancePlan.get().getId());
+                log.info("Checklist JSON preview: {}", checklistJson != null ? checklistJson.substring(0, Math.min(100, checklistJson.length())) : "null");
             } else {
-                System.out.println("⚠️ WARNING: No maintenance plan found for service package: " + servicePackageId);
+                log.warn("No maintenance plan found for service package: {}", servicePackageId);
             }
         } catch (Exception e) {
-            System.err.println("❌ ERROR loading checklist template: " + e.getMessage());
-            e.printStackTrace();
+            log.error("ERROR loading checklist template: {}", e.getMessage(), e);
         }
 
         // 5. Tạo Service Order mới với technician đã được phân công
@@ -272,34 +274,30 @@ public class ServiceOrderService {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        System.out.println("=== BEFORE SAVE SERVICE ORDER ===");
-        System.out.println("Service Order to be saved:");
-        System.out.println("  - orderCode: " + serviceOrder.getOrderCode());
-        System.out.println("  - appointment.id: " + serviceOrder.getAppointment().getId());
-        System.out.println("  - technician.id (staff.id): " + serviceOrder.getTechnician().getId());
-        System.out.println("  - startTime: " + serviceOrder.getStartTime());
-        System.out.println("  - endTime: " + serviceOrder.getEndTime());
-        System.out.println("==================================");
+        log.debug("=== BEFORE SAVE SERVICE ORDER ===");
+        log.debug("Service Order - orderCode: {}, appointmentId: {}, technicianId: {}", 
+                  serviceOrder.getOrderCode(), 
+                  serviceOrder.getAppointment().getId(), 
+                  serviceOrder.getTechnician().getId());
 
         ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
 
-        System.out.println("=== AFTER SAVE SERVICE ORDER ===");
-        System.out.println("Saved Service Order:");
-        System.out.println("  - id (generated): " + savedOrder.getId());
-        System.out.println("  - orderCode: " + savedOrder.getOrderCode());
-        System.out.println("  - appointment_id (FK): " + savedOrder.getAppointment().getId());
-        System.out.println("  - technician_id (FK to staff.id): " + savedOrder.getTechnician().getId());
-        System.out.println("=================================");
+        log.info("=== SERVICE ORDER SAVED ===");
+        log.info("Saved Service Order - id: {}, orderCode: {}, appointmentId: {}, technicianId: {}", 
+                 savedOrder.getId(), 
+                 savedOrder.getOrderCode(), 
+                 savedOrder.getAppointment().getId(), 
+                 savedOrder.getTechnician().getId());
 
         // 6. Cập nhật trạng thái appointment thành ASSIGNED và gán technician (Staff)
         appointment.setStatus(ServiceAppointment.AppointmentStatus.ASSIGNED);
         appointment.setTechnician(technicianStaff); // Gán Staff vào appointment để hiển thị tên
         appointmentRepository.save(appointment);
 
-        System.out.println("=== APPOINTMENT UPDATED ===");
-        System.out.println("Appointment status changed to: " + appointment.getStatus());
-        System.out.println("Appointment technician set to: " + technicianStaff.getUser().getFullName());
-        System.out.println("===========================");
+        log.info("=== APPOINTMENT UPDATED ===");
+        log.info("Appointment status changed to: {}", appointment.getStatus());
+        log.info("Appointment technician set to: {}", technicianStaff.getUser().getFullName());
+        log.info("=== CREATE SERVICE ORDER COMPLETED ===");
 
         return convertToResponse(savedOrder);
     }
@@ -314,27 +312,84 @@ public class ServiceOrderService {
     }
 
     public ServiceOrderResponse updateIssues(UUID serviceOrderId, String issuesJson) {
-        System.out.println("===========================");
-        System.out.println("🔍 UPDATE ISSUES - START");
-        System.out.println("Service Order ID: " + serviceOrderId);
-        System.out.println("Issues JSON received: " + issuesJson);
+        log.info("=== UPDATE ISSUES - START ===");
+        log.info(SERVICE_ORDER_ID_LOG, serviceOrderId);
+        log.debug("Issues JSON received: {}", issuesJson);
         
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
-        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
-        System.out.println("📝 Old issues: " + serviceOrder.getIssues());
+        log.info(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
+        log.debug("Old issues: {}", serviceOrder.getIssues());
         
         serviceOrder.setIssues(issuesJson);
         serviceOrder.setUpdatedAt(LocalDateTime.now());
         
         ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
         
-        System.out.println("💾 New issues saved: " + savedOrder.getIssues());
-        System.out.println("✅ UPDATE ISSUES - COMPLETED");
-        System.out.println("===========================");
+        log.info("Issues updated successfully for Service Order: {}", savedOrder.getOrderCode());
+        log.debug("New issues: {}", savedOrder.getIssues());
         
         return convertToResponse(savedOrder);
+    }
+
+    /**
+     * Set price for a specific issue (Staff/Admin only)
+     * @param serviceOrderId Service order ID
+     * @param issueId Issue ID to update price
+     * @param price Price to set
+     * @return Updated service order
+     */
+    @Transactional
+    public ServiceOrderResponse setIssuePrice(UUID serviceOrderId, String issueId, Double price) {
+        log.info("=== SET ISSUE PRICE - START ===");
+        log.info(SERVICE_ORDER_ID_LOG, serviceOrderId);
+        log.info("Issue ID: {}, Price: {}", issueId, price);
+        
+        ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
+                .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
+        
+        log.info(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
+        
+        try {
+            // Parse issues JSON
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.List<java.util.Map<String, Object>> issuesList = mapper.readValue(
+                serviceOrder.getIssues() != null ? serviceOrder.getIssues() : "[]",
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
+            );
+            
+            // Find and update the specific issue
+            boolean found = false;
+            for (java.util.Map<String, Object> issue : issuesList) {
+                if (issueId.equals(issue.get("id"))) {
+                    issue.put("price", price);
+                    issue.put("staffSetPrice", true);
+                    found = true;
+                    log.info("Updated price for issue: {}", issueId);
+                    break;
+                }
+            }
+            
+            if (!found) {
+                log.error("Issue not found: {}", issueId);
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            
+            // Save updated issues
+            String updatedIssuesJson = mapper.writeValueAsString(issuesList);
+            serviceOrder.setIssues(updatedIssuesJson);
+            serviceOrder.setUpdatedAt(LocalDateTime.now());
+            
+            ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
+            log.info("=== SET ISSUE PRICE - COMPLETED ===");
+            
+            return convertToResponse(savedOrder);
+            
+        } catch (Exception e) {
+            log.error("Error setting issue price: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
     }
 
     /**
@@ -344,15 +399,14 @@ public class ServiceOrderService {
      */
     @Transactional
     public ServiceOrderResponse addPartsUsed(UUID serviceOrderId, String partsJson) {
-        System.out.println("===========================");
-        System.out.println("🔧 ADD PARTS USED - START");
-        System.out.println("Service Order ID: " + serviceOrderId);
-        System.out.println("Parts JSON received: " + partsJson);
+        log.info("=== ADD PARTS USED - START ===");
+        log.info(SERVICE_ORDER_ID_LOG, serviceOrderId);
+        log.debug("Parts JSON received: {}", partsJson);
         
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
-        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        log.info(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
         
         try {
             // Parse JSON to list of part info
@@ -362,20 +416,19 @@ public class ServiceOrderService {
                 new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
             );
             
-            System.out.println("📦 Parsed " + partsList.size() + " parts");
+            log.info("Parsed {} parts", partsList.size());
             
             for (java.util.Map<String, Object> partInfo : partsList) {
                 String partCode = (String) partInfo.get("partCode");
                 Integer quantity = (Integer) partInfo.get("quantity");
                 
-                System.out.println("🔍 Processing part: " + partCode + " x " + quantity);
+                log.debug("Processing part: {} x {}", partCode, quantity);
                 
                 // Find part by code
                 Part part = partRepository.findByPartCode(partCode)
                         .orElseThrow(() -> new AppException(ErrorCode.PART_NOT_FOUND));
                 
-                System.out.println("✅ Found part: " + part.getName() + " (ID: " + part.getId() + ")");
-                System.out.println("💰 Unit price: " + part.getUnitPrice());
+                log.info("Found part: {} (ID: {}), Unit price: {}", part.getName(), part.getId(), part.getUnitPrice());
                 
                 // Create service_order_part record
                 ServiceOrderPart orderPart = ServiceOrderPart.builder()
@@ -387,21 +440,20 @@ public class ServiceOrderService {
                         .build();
                 
                 serviceOrderPartRepository.save(orderPart);
-                System.out.println("✅ Saved service_order_part record");
+                log.debug("Saved service_order_part record");
                 
                 // Update part stock quantity
-                int newStock = part.getStockQuantity() - quantity;
+                int oldStock = part.getStockQuantity();
+                int newStock = oldStock - quantity;
                 part.setStockQuantity(newStock);
                 partRepository.save(part);
-                System.out.println("📦 Updated stock: " + (part.getStockQuantity() + quantity) + " -> " + newStock);
+                log.info("Updated stock for part {}: {} -> {}", partCode, oldStock, newStock);
             }
             
-            System.out.println("✅ ADD PARTS USED - COMPLETED");
-            System.out.println("===========================");
+            log.info("=== ADD PARTS USED - COMPLETED ===");
             
         } catch (Exception e) {
-            System.err.println("❌ Error parsing/saving parts: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error parsing/saving parts: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         
@@ -414,21 +466,15 @@ public class ServiceOrderService {
      * @return Count of parts used
      */
     public int getPartsUsedCount(UUID serviceOrderId) {
-        System.out.println("===========================");
-        System.out.println("🔧 GET PARTS USED COUNT - START");
-        System.out.println("Service Order ID: " + serviceOrderId);
+        log.debug("Getting parts used count for Service Order ID: {}", serviceOrderId);
         
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
-        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
-        
         List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
         int count = parts.size();
         
-        System.out.println("📦 Found " + count + " parts");
-        System.out.println("✅ GET PARTS USED COUNT - COMPLETED");
-        System.out.println("===========================");
+        log.info("Found {} parts for Service Order: {}", count, serviceOrder.getOrderCode());
         
         return count;
     }
@@ -439,14 +485,12 @@ public class ServiceOrderService {
      * @return Map with "count" and "total"
      */
     public java.util.Map<String, Object> getPartsUsedSummary(UUID serviceOrderId) {
-        System.out.println("===========================");
-        System.out.println("💰 GET PARTS SUMMARY - START");
-        System.out.println("Service Order ID: " + serviceOrderId);
+        log.debug("Getting parts summary for Service Order ID: {}", serviceOrderId);
         
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
-        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        log.debug(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
         
         List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
         int count = parts.size();
@@ -455,9 +499,7 @@ public class ServiceOrderService {
                 .map(ServiceOrderPart::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        System.out.println("📦 Found " + count + " parts, Total: " + total);
-        System.out.println("✅ GET PARTS SUMMARY - COMPLETED");
-        System.out.println("===========================");
+        log.info("Parts summary for Service Order {}: {} parts, Total: {}", serviceOrder.getOrderCode(), count, total);
         
         return java.util.Map.of("count", count, "total", total);
     }
@@ -468,17 +510,13 @@ public class ServiceOrderService {
      * @return List of ServiceOrderPartResponse
      */
     public List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse> getPartsUsed(UUID serviceOrderId) {
-        System.out.println("===========================");
-        System.out.println("🔧 GET PARTS LIST - START");
-        System.out.println("Service Order ID: " + serviceOrderId);
+        log.debug("Getting parts list for Service Order ID: {}", serviceOrderId);
         
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
-        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
-        
         List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
-        System.out.println("📦 Found " + parts.size() + " parts");
+        log.info("Found {} parts for Service Order: {}", parts.size(), serviceOrder.getOrderCode());
         
         List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse> response = new java.util.ArrayList<>();
         for (ServiceOrderPart sop : parts) {
@@ -495,8 +533,7 @@ public class ServiceOrderService {
             response.add(dto);
         }
         
-        System.out.println("✅ GET PARTS LIST - COMPLETED");
-        System.out.println("===========================");
+        log.debug("Get parts list completed");
         
         return response;
     }
@@ -508,15 +545,14 @@ public class ServiceOrderService {
      */
     @Transactional
     public ServiceOrderResponse addServiceSuggestion(UUID serviceOrderId, String suggestionJson) {
-        System.out.println("===========================");
-        System.out.println("💡 ADD SERVICE SUGGESTION - START");
-        System.out.println("Service Order ID: " + serviceOrderId);
-        System.out.println("Suggestion JSON received: " + suggestionJson);
+        log.info("=== ADD SERVICE SUGGESTION - START ===");
+        log.info(SERVICE_ORDER_ID_LOG, serviceOrderId);
+        log.debug("Suggestion JSON received: {}", suggestionJson);
         
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
-        System.out.println("✅ Service Order found: " + serviceOrder.getOrderCode());
+        log.info(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
         
         try {
             // Parse JSON to suggestion info
@@ -542,9 +578,7 @@ public class ServiceOrderService {
                 }
             }
             
-            System.out.println("📝 Service: " + serviceName);
-            System.out.println("📝 Reason: " + reason);
-            System.out.println("💰 Estimated cost: " + estimatedCost);
+            log.info("Service: {}, Reason: {}, Estimated cost: {}", serviceName, reason, estimatedCost);
             
             // Create service suggestion record
             ServiceSuggestion suggestion = ServiceSuggestion.builder()
@@ -558,14 +592,11 @@ public class ServiceOrderService {
                     .build();
             
             serviceSuggestionRepository.save(suggestion);
-            System.out.println("✅ Saved service suggestion");
-            
-            System.out.println("✅ ADD SERVICE SUGGESTION - COMPLETED");
-            System.out.println("===========================");
+            log.info("Service suggestion saved successfully");
+            log.info("=== ADD SERVICE SUGGESTION - COMPLETED ===");
             
         } catch (Exception e) {
-            System.err.println("❌ Error parsing/saving suggestion: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error parsing/saving suggestion: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         
@@ -576,13 +607,11 @@ public class ServiceOrderService {
      * Get service suggestions for a service order (return DTO to avoid lazy loading)
      */
     public List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse> getServiceSuggestions(UUID serviceOrderId) {
-        System.out.println("===========================");
-        System.out.println("📋 GET SERVICE SUGGESTIONS - START");
-        System.out.println("Service Order ID: " + serviceOrderId);
+        log.debug("Getting service suggestions for Service Order ID: {}", serviceOrderId);
         
         List<ServiceSuggestion> suggestions = serviceSuggestionRepository.findByServiceOrderId(serviceOrderId);
         
-        System.out.println("📦 Found " + suggestions.size() + " suggestions");
+        log.info("Found {} service suggestions for Service Order ID: {}", suggestions.size(), serviceOrderId);
         
         List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse> responses = suggestions.stream()
                 .map(s -> com.swp391.EV.service.dto.response.ServiceSuggestionResponse.builder()
@@ -595,9 +624,6 @@ public class ServiceOrderService {
                         .updatedAt(s.getUpdatedAt())
                         .build())
                 .collect(Collectors.toList());
-        
-        System.out.println("✅ GET SERVICE SUGGESTIONS - COMPLETED");
-        System.out.println("===========================");
         
         return responses;
     }
@@ -622,16 +648,62 @@ public class ServiceOrderService {
         response.setAppointmentId(serviceOrder.getAppointment().getId());
         response.setOrderCode(serviceOrder.getOrderCode());
         
+        // Lấy thông tin customer từ appointment
+        try {
+            if (serviceOrder.getAppointment() != null && serviceOrder.getAppointment().getCustomer() != null) {
+                Customer customer = serviceOrder.getAppointment().getCustomer();
+                ServiceOrderResponse.CustomerInfo customerInfo = new ServiceOrderResponse.CustomerInfo();
+                customerInfo.setFirstName(customer.getFullName() != null ? customer.getFullName().split(" ")[0] : "");
+                customerInfo.setLastName(customer.getFullName() != null && customer.getFullName().split(" ").length > 1 
+                    ? customer.getFullName().substring(customer.getFullName().indexOf(" ") + 1) : "");
+                customerInfo.setEmail(customer.getEmail());
+                customerInfo.setPhone(customer.getPhone());
+                response.setCustomer(customerInfo);
+            }
+        } catch (Exception e) {
+            log.error("Error loading customer info: {}", e.getMessage());
+        }
+        
+        // Lấy thông tin vehicle từ appointment
+        try {
+            if (serviceOrder.getAppointment() != null && serviceOrder.getAppointment().getVehicle() != null) {
+                Vehicle vehicle = serviceOrder.getAppointment().getVehicle();
+                ServiceOrderResponse.VehicleInfo vehicleInfo = new ServiceOrderResponse.VehicleInfo();
+                if (vehicle.getVehicleModel() != null) {
+                    vehicleInfo.setModel(vehicle.getVehicleModel().getModel());
+                    vehicleInfo.setManufacturer(vehicle.getVehicleModel().getManufacturer());
+                }
+                vehicleInfo.setLicensePlate(vehicle.getLicensePlate());
+                response.setVehicle(vehicleInfo);
+            }
+        } catch (Exception e) {
+            log.error("Error loading vehicle info: {}", e.getMessage());
+        }
+        
         // Lấy thông tin technician từ technicianUserId
         if (serviceOrder.getTechnicianUserId() != null) {
             response.setTechnicianId(serviceOrder.getTechnicianUserId());
             // Nếu có quan hệ technician được lazy load
             try {
                 if (serviceOrder.getTechnician() != null) {
-                    response.setTechnicianName(serviceOrder.getTechnician().getUser().getFullName());
+                    User techUser = serviceOrder.getTechnician().getUser();
+                    response.setTechnicianName(techUser.getFullName());
+                    
+                    ServiceOrderResponse.TechnicianInfo technicianInfo = new ServiceOrderResponse.TechnicianInfo();
+                    
+                    // Split fullName into firstName and lastName
+                    String fullName = techUser.getFullName() != null ? techUser.getFullName() : "";
+                    String[] nameParts = fullName.trim().split("\\s+", 2);
+                    technicianInfo.setFirstName(nameParts.length > 0 ? nameParts[0] : "");
+                    technicianInfo.setLastName(nameParts.length > 1 ? nameParts[1] : "");
+                    
+                    technicianInfo.setEmail(techUser.getEmail());
+                    technicianInfo.setPhone(techUser.getPhone());
+                    response.setTechnician(technicianInfo);
                 }
             } catch (Exception e) {
                 // LazyInitializationException - skip technician name
+                log.error("Error loading technician info: {}", e.getMessage());
                 response.setTechnicianName("Unknown");
             }
         }
@@ -650,3 +722,4 @@ public class ServiceOrderService {
         return response;
     }
 }
+

@@ -25,4 +25,32 @@ public class ServiceOrderResponse {
     private BigDecimal totalAmount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // Nested objects for customer and vehicle info
+    private CustomerInfo customer;
+    private VehicleInfo vehicle;
+    private TechnicianInfo technician;
+    
+    @Data
+    public static class CustomerInfo {
+        private String firstName;
+        private String lastName;
+        private String email;
+        private String phone;
+    }
+    
+    @Data
+    public static class VehicleInfo {
+        private String model;
+        private String manufacturer;
+        private String licensePlate;
+    }
+    
+    @Data
+    public static class TechnicianInfo {
+        private String firstName;
+        private String lastName;
+        private String email;
+        private String phone;
+    }
 }

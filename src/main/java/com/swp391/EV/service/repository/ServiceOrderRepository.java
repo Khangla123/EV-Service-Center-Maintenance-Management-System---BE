@@ -40,5 +40,15 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, UUID
            "WHERE so.id = :id")
     Optional<ServiceOrder> findByIdWithRelations(@Param("id") UUID id);
     
+    // Fetch all ServiceOrders with customer, vehicle and technician info for IssuePricing page
+    @Query("SELECT DISTINCT so FROM ServiceOrder so " +
+           "LEFT JOIN FETCH so.appointment a " +
+           "LEFT JOIN FETCH a.customer " +
+           "LEFT JOIN FETCH a.vehicle v " +
+           "LEFT JOIN FETCH v.vehicleModel " +
+           "LEFT JOIN FETCH so.technician t " +
+           "LEFT JOIN FETCH t.user")
+    List<ServiceOrder> findAllWithCustomerAndVehicle();
+    
     List<ServiceOrder> findAll();
 }

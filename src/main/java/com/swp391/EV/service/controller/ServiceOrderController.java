@@ -171,6 +171,24 @@ public class ServiceOrderController {
                 .build();
     }
 
+    @PutMapping("/{id}/issues/set-price")
+    @Operation(summary = "Set giá cho issue [STAFF/ADMIN]",
+               description = "Staff/Admin set giá cho các vấn đề phát hiện. " +
+                            "Format: JSON {issueId: 'ISS-123', price: 500000}")
+    public ApiResponse<ServiceOrderResponse> setIssuePrice(
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, Object> requestBody) {
+        String issueId = (String) requestBody.get("issueId");
+        Number priceNumber = (Number) requestBody.get("price");
+        Double price = priceNumber != null ? priceNumber.doubleValue() : null;
+        
+        ServiceOrderResponse response = serviceOrderService.setIssuePrice(id, issueId, price);
+        return ApiResponse.<ServiceOrderResponse>builder()
+                .message("Cập nhật giá thành công")
+                .result(response)
+                .build();
+    }
+
     @PostMapping("/{id}/parts")
     @Operation(summary = "Thêm phụ tùng đã sử dụng [TECHNICIAN]",
                description = "Technician thêm phụ tùng đã sử dụng trong quá trình bảo dưỡng. " +
