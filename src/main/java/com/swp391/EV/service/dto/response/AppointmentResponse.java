@@ -19,6 +19,8 @@ public class AppointmentResponse {
     private String serviceCenterName;
     private UUID servicePackageId;
     private String servicePackageName;
+    private String selectedPackages; // JSON array of selected package IDs
+    private String selectedPackageNames; // Comma-separated package names for display
     private UUID technicianId;
     private String technicianName;
     private LocalDateTime appointmentDate;

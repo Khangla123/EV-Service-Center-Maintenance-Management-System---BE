@@ -1,5 +1,7 @@
 package com.swp391.EV.service.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swp391.EV.service.dto.request.MaintenanceHistoryFilterRequest;
 import com.swp391.EV.service.dto.response.MaintenanceHistoryResponse;
 import com.swp391.EV.service.dto.response.MaintenanceHistoryStatisticsResponse;
@@ -7,9 +9,11 @@ import com.swp391.EV.service.exception.AppException;
 import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.Customer;
 import com.swp391.EV.service.model.ServiceAppointment;
+import com.swp391.EV.service.model.ServicePackage;
 import com.swp391.EV.service.model.User;
 import com.swp391.EV.service.repository.CustomerRepository;
 import com.swp391.EV.service.repository.ServiceAppointmentRepository;
+import com.swp391.EV.service.repository.ServicePackageRepository;
 import com.swp391.EV.service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -22,6 +26,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,15 +36,14 @@ public class MaintenanceHistoryService {
     private final ServiceAppointmentRepository serviceAppointmentRepository;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
+    private final ServicePackageRepository servicePackageRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public MaintenanceHistoryStatisticsResponse getMaintenanceHistory(MaintenanceHistoryFilterRequest filter) {
         // Get current authenticated user
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String principalName = authentication.getName();
-        
-        System.out.println("=== MAINTENANCE HISTORY SERVICE ===");
-        System.out.println("Principal from token: " + principalName);
 
         Customer customer;
         
@@ -47,14 +51,12 @@ public class MaintenanceHistoryService {
         try {
             // Try to parse as UUID first
             java.util.UUID userId = java.util.UUID.fromString(principalName);
-            System.out.println("Principal is UUID (user ID): " + userId);
             
             // Find customer by user ID
             customer = customerRepository.findByUserId(userId)
                     .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
         } catch (IllegalArgumentException e) {
             // Not a UUID, treat as email
-            System.out.println("Principal is email: " + principalName);
             
             // Try to find customer directly by email first
             customer = customerRepository.findByEmail(principalName)
@@ -67,12 +69,8 @@ public class MaintenanceHistoryService {
                     });
         }
 
-        System.out.println("Customer found - ID: " + customer.getId() + ", Email: " + customer.getEmail());
-        System.out.println("Filter: vehicleId=" + filter.getVehicleId() + ", fromDate=" + filter.getFromDate() + ", toDate=" + filter.getToDate());
-
         // Get maintenance history based on filters
         List<ServiceAppointment> appointments = getFilteredAppointments(customer.getId(), filter);
-        System.out.println("Number of appointments found: " + appointments.size());
 
         // Map to response
         List<MaintenanceHistoryResponse> historyList = appointments.stream()
@@ -137,6 +135,34 @@ public class MaintenanceHistoryService {
                 ? appointment.getServicePackage().getName()
                 : "Dịch vụ bảo dưỡng";
 
+        // Parse selected packages and generate comma-separated package names
+        String selectedPackageNames = null;
+        if (appointment.getSelectedPackages() != null && !appointment.getSelectedPackages().trim().isEmpty()) {
+            try {
+                List<String> packageIdStrings = objectMapper.readValue(
+                        appointment.getSelectedPackages(),
+                        new TypeReference<List<String>>() {}
+                );
+                
+                List<String> packageNames = packageIdStrings.stream()
+                        .map(idStr -> {
+                            try {
+                                UUID packageId = UUID.fromString(idStr);
+                                return servicePackageRepository.findById(packageId)
+                                        .map(ServicePackage::getName)
+                                        .orElse("Unknown Package");
+                            } catch (IllegalArgumentException e) {
+                                return "Invalid Package ID";
+                            }
+                        })
+                        .collect(Collectors.toList());
+                
+                selectedPackageNames = String.join(", ", packageNames);
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        }
+
         // Calculate next maintenance date (e.g., 6 months from service date)
         LocalDateTime nextMaintenanceDate = appointment.getActualCompletion() != null
                 ? appointment.getActualCompletion().plusMonths(6)
@@ -158,6 +184,7 @@ public class MaintenanceHistoryService {
         return MaintenanceHistoryResponse.builder()
                 .appointmentId(appointment.getId())
                 .serviceTitle(serviceTitle)
+                .selectedPackageNames(selectedPackageNames)
                 .vehicleModel(vehicleModel)
                 .licensePlate(licensePlate)
                 .mileage(mileage)

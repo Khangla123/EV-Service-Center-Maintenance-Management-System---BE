@@ -11,6 +11,7 @@ public class CreateAppointmentRequest {
     private UUID vehicleId;
     private UUID serviceCenterId;
     private UUID servicePackageId;
+    private String selectedPackages; // JSON array of selected package IDs
     private LocalDateTime appointmentDate;
     private String notes;
 }

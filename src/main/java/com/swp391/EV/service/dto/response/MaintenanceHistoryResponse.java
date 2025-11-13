@@ -16,6 +16,7 @@ import java.util.UUID;
 public class MaintenanceHistoryResponse {
     private UUID appointmentId;
     private String serviceTitle;
+    private String selectedPackageNames; // Comma-separated names of all selected packages
     private String vehicleModel;
     private String licensePlate;
     private Integer mileage;

@@ -236,30 +236,92 @@ public class ServiceOrderService {
         log.debug("Found Staff.user.id: {}", technicianUserId);
         log.debug("Will save technician_id to DB: {} (user.id)", technicianUserId);
 
-        // 5. Load checklist template từ maintenance_plans
+        // 5. Load checklist templates from maintenance_plans for ALL selected packages
         String checklistJson = null;
         try {
-            UUID servicePackageId = appointment.getServicePackage().getId();
             UUID vehicleModelId = appointment.getVehicle().getVehicleModel().getId();
             
-            Optional<MaintenancePlan> maintenancePlan = maintenancePlanRepository
-                    .findByServicePackageIdAndVehicleModelId(servicePackageId, vehicleModelId);
+            // Parse selected_packages JSON array to get all package IDs
+            java.util.List<UUID> selectedPackageIds = new java.util.ArrayList<>();
             
-            if (maintenancePlan.isEmpty()) {
-                // Fallback: Tìm plan chung không phân biệt vehicle model
-                maintenancePlan = maintenancePlanRepository.findByServicePackageId(servicePackageId);
-            }
-            
-            if (maintenancePlan.isPresent()) {
-                checklistJson = maintenancePlan.get().getChecklistTemplate();
-                log.info("=== LOADED CHECKLIST TEMPLATE ===");
-                log.info("From maintenance_plan_id: {}", maintenancePlan.get().getId());
-                log.info("Checklist JSON preview: {}", checklistJson != null ? checklistJson.substring(0, Math.min(100, checklistJson.length())) : "null");
+            if (appointment.getSelectedPackages() != null && !appointment.getSelectedPackages().trim().isEmpty()) {
+                log.info("=== PARSING SELECTED PACKAGES ===");
+                log.info("Selected packages JSON: {}", appointment.getSelectedPackages());
+                
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                java.util.List<String> packageIdStrings = mapper.readValue(
+                    appointment.getSelectedPackages(),
+                    new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {}
+                );
+                
+                for (String pkgIdStr : packageIdStrings) {
+                    selectedPackageIds.add(UUID.fromString(pkgIdStr));
+                }
+                
+                log.info("Parsed {} package IDs: {}", selectedPackageIds.size(), selectedPackageIds);
             } else {
-                log.warn("No maintenance plan found for service package: {}", servicePackageId);
+                // Fallback: Use single service_package_id if selected_packages is empty
+                UUID fallbackPackageId = appointment.getServicePackage().getId();
+                selectedPackageIds.add(fallbackPackageId);
+                log.warn("No selected_packages found, using fallback service_package_id: {}", fallbackPackageId);
             }
+            
+            // Load and merge checklist templates from all packages
+            java.util.List<java.util.Map<String, Object>> mergedChecklist = new java.util.ArrayList<>();
+            int orderCounter = 1;
+            
+            log.info("=== LOADING CHECKLIST TEMPLATES FOR {} PACKAGES ===", selectedPackageIds.size());
+            
+            for (UUID packageId : selectedPackageIds) {
+                log.info("Loading checklist for package ID: {}", packageId);
+                
+                Optional<MaintenancePlan> maintenancePlan = maintenancePlanRepository
+                        .findByServicePackageIdAndVehicleModelId(packageId, vehicleModelId);
+                
+                if (maintenancePlan.isEmpty()) {
+                    // Fallback: Tìm plan chung không phân biệt vehicle model
+                    maintenancePlan = maintenancePlanRepository.findByServicePackageId(packageId);
+                }
+                
+                if (maintenancePlan.isPresent()) {
+                    String templateJson = maintenancePlan.get().getChecklistTemplate();
+                    log.info("Found maintenance_plan_id: {}", maintenancePlan.get().getId());
+                    log.info("Checklist template preview: {}", templateJson != null ? templateJson.substring(0, Math.min(100, templateJson.length())) : "null");
+                    
+                    // Parse checklist JSON array
+                    if (templateJson != null && !templateJson.trim().isEmpty()) {
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        java.util.List<java.util.Map<String, Object>> checklistItems = mapper.readValue(
+                            templateJson,
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
+                        );
+                        
+                        // Re-number order field to avoid conflicts when merging
+                        for (java.util.Map<String, Object> item : checklistItems) {
+                            item.put("order", orderCounter++);
+                        }
+                        
+                        mergedChecklist.addAll(checklistItems);
+                        log.info("Added {} checklist items from package {}", checklistItems.size(), packageId);
+                    }
+                } else {
+                    log.warn("No maintenance plan found for package ID: {}", packageId);
+                }
+            }
+            
+            // Convert merged checklist back to JSON string
+            if (!mergedChecklist.isEmpty()) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                checklistJson = mapper.writeValueAsString(mergedChecklist);
+                log.info("=== MERGED CHECKLIST COMPLETE ===");
+                log.info("Total checklist items: {}", mergedChecklist.size());
+                log.info("Merged checklist JSON preview: {}", checklistJson.substring(0, Math.min(200, checklistJson.length())));
+            } else {
+                log.warn("No checklist items found for any selected packages");
+            }
+            
         } catch (Exception e) {
-            log.error("ERROR loading checklist template: {}", e.getMessage(), e);
+            log.error("ERROR loading/merging checklist templates: {}", e.getMessage(), e);
         }
 
         // 5. Tạo Service Order mới với technician đã được phân công

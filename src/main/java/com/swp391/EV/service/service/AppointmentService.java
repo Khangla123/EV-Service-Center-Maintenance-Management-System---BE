@@ -13,6 +13,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -71,6 +73,7 @@ public class AppointmentService {
                 .vehicle(vehicle)
                 .serviceCenter(serviceCenter)
                 .servicePackage(servicePackage)
+                .selectedPackages(request.getSelectedPackages()) // ✅ Save selected packages JSON
                 .appointmentDate(request.getAppointmentDate())
                 .notes(request.getNotes())
                 .status(ServiceAppointment.AppointmentStatus.PENDING)
@@ -305,6 +308,44 @@ public class AppointmentService {
             }
         }
         
+        // Map selected packages JSON
+        response.setSelectedPackages(appointment.getSelectedPackages());
+        
+        // Parse selected packages and get names
+        if (appointment.getSelectedPackages() != null && !appointment.getSelectedPackages().trim().isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                List<String> packageIdStrings = mapper.readValue(
+                    appointment.getSelectedPackages(), 
+                    new TypeReference<List<String>>() {}
+                );
+                
+                // Convert strings to UUIDs and fetch package names
+                List<String> packageNames = packageIdStrings.stream()
+                    .map(idStr -> {
+                        try {
+                            UUID packageId = UUID.fromString(idStr);
+                            return servicePackageRepository.findById(packageId)
+                                .map(ServicePackage::getName)
+                                .orElse("Unknown Package");
+                        } catch (Exception e) {
+                            return "Invalid Package";
+                        }
+                    })
+                    .collect(Collectors.toList());
+                
+                response.setSelectedPackageNames(String.join(", ", packageNames));
+            } catch (Exception e) {
+                // Fallback to single package name
+                response.setSelectedPackageNames(appointment.getServicePackage() != null ? 
+                    appointment.getServicePackage().getName() : null);
+            }
+        } else {
+            // No selected packages, use service package name
+            response.setSelectedPackageNames(appointment.getServicePackage() != null ? 
+                appointment.getServicePackage().getName() : null);
+        }
+        
         // Map technician information
         if (appointment.getTechnician() != null) {
             try {
@@ -336,7 +377,6 @@ public class AppointmentService {
         Optional<ServiceOrder> serviceOrderOpt = serviceOrderRepository.findByAppointmentId(appointment.getId());
         
         if (serviceOrderOpt.isEmpty()) {
-            System.err.println("Cannot create invoice: No service order found for appointment " + appointment.getId());
             return;
         }
         
@@ -344,7 +384,6 @@ public class AppointmentService {
         
         // 2. Kiểm tra xem đã có invoice chưa (tránh tạo trùng)
         if (invoiceService.getInvoiceByServiceOrderId(serviceOrder.getId()) != null) {
-            System.out.println("Invoice already exists for service order " + serviceOrder.getId());
             return;
         }
         
@@ -367,8 +406,60 @@ public class AppointmentService {
         
         // 6. Tạo invoice
         invoiceService.createInvoice(invoiceRequest);
+    }
+
+    /**
+     * Lấy danh sách gói dịch vụ của appointment (hỗ trợ multiple packages)
+     */
+    @Transactional(readOnly = true)
+    public List<com.swp391.EV.service.dto.AppointmentPackageDTO> getAppointmentPackages(UUID appointmentId) {
+        ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
         
-        System.out.println("Auto-created invoice for completed appointment " + appointment.getId());
+        // Try to parse selected_packages JSON field first
+        String selectedPackagesJson = appointment.getSelectedPackages();
+        if (selectedPackagesJson != null && !selectedPackagesJson.isEmpty() && !selectedPackagesJson.equals("[]")) {
+            try {
+                // Parse JSON array: [{"packageId": "uuid", "packageName": "...", "price": 1200000}, ...]
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                java.util.List<java.util.Map<String, Object>> packages = 
+                    mapper.readValue(selectedPackagesJson, new com.fasterxml.jackson.core.type.TypeReference<>() {});
+                
+                return packages.stream()
+                        .map(pkg -> com.swp391.EV.service.dto.AppointmentPackageDTO.builder()
+                                .packageId(UUID.fromString(pkg.get("packageId").toString()))
+                                .packageName(pkg.get("packageName").toString())
+                                .description(pkg.getOrDefault("description", "").toString())
+                                .price(new java.math.BigDecimal(pkg.get("price").toString()))
+                                .durationMinutes(pkg.containsKey("durationMinutes") 
+                                    ? Integer.valueOf(pkg.get("durationMinutes").toString()) 
+                                    : null)
+                                .build())
+                        .collect(Collectors.toList());
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        }
+        
+        // FALLBACK: Return single package from service_package_id (for backward compatibility)
+        if (appointment.getServicePackage() == null) {
+            return List.of(); // Không có gói nào
+        }
+        
+        // Force initialize the lazy proxy within transaction
+        ServicePackage pkg = appointment.getServicePackage();
+        // Access properties to trigger initialization
+        pkg.getName();
+        
+        return List.of(
+                com.swp391.EV.service.dto.AppointmentPackageDTO.builder()
+                        .packageId(pkg.getId())
+                        .packageName(pkg.getName())
+                        .description(pkg.getDescription())
+                        .price(pkg.getPrice())
+                        .durationMinutes(pkg.getDurationMinutes())
+                        .build()
+        );
     }
 }
 

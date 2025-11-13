@@ -163,4 +163,15 @@ public class AppointmentController {
                 .result(appointments)
                 .build();
     }
+
+    @GetMapping("/{id}/packages")
+    @Operation(summary = "Lấy danh sách gói dịch vụ của lịch hẹn", 
+               description = "Lấy tất cả các gói dịch vụ mà khách hàng đã chọn khi đặt lịch")
+    public ApiResponse<List<com.swp391.EV.service.dto.AppointmentPackageDTO>> getAppointmentPackages(@PathVariable UUID id) {
+        List<com.swp391.EV.service.dto.AppointmentPackageDTO> packages = appointmentService.getAppointmentPackages(id);
+        return ApiResponse.<List<com.swp391.EV.service.dto.AppointmentPackageDTO>>builder()
+                .message("Danh sách gói dịch vụ của lịch hẹn")
+                .result(packages)
+                .build();
+    }
 }

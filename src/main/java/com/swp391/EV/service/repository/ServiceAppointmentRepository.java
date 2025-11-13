@@ -57,7 +57,7 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
     List<ServiceAppointment> findByTechnicianIdWithDetails(@Param("technicianId") UUID technicianId);
 
     // New queries for maintenance history
-    @Query("SELECT sa FROM ServiceAppointment sa " +
+    @Query("SELECT DISTINCT sa FROM ServiceAppointment sa " +
            "LEFT JOIN FETCH sa.vehicle v " +
            "LEFT JOIN FETCH v.vehicleModel " +
            "LEFT JOIN FETCH sa.servicePackage " +
@@ -66,7 +66,7 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
            "ORDER BY sa.appointmentDate DESC")
     List<ServiceAppointment> findMaintenanceHistoryByCustomerId(@Param("customerId") UUID customerId);
 
-    @Query("SELECT sa FROM ServiceAppointment sa " +
+    @Query("SELECT DISTINCT sa FROM ServiceAppointment sa " +
            "LEFT JOIN FETCH sa.vehicle v " +
            "LEFT JOIN FETCH v.vehicleModel " +
            "LEFT JOIN FETCH sa.servicePackage " +
@@ -78,7 +78,7 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
             @Param("customerId") UUID customerId,
             @Param("vehicleId") UUID vehicleId);
 
-    @Query("SELECT sa FROM ServiceAppointment sa " +
+    @Query("SELECT DISTINCT sa FROM ServiceAppointment sa " +
            "LEFT JOIN FETCH sa.vehicle v " +
            "LEFT JOIN FETCH v.vehicleModel " +
            "LEFT JOIN FETCH sa.servicePackage " +
@@ -91,7 +91,7 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
             @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate);
 
-    @Query("SELECT sa FROM ServiceAppointment sa " +
+    @Query("SELECT DISTINCT sa FROM ServiceAppointment sa " +
            "LEFT JOIN FETCH sa.vehicle v " +
            "LEFT JOIN FETCH v.vehicleModel " +
            "LEFT JOIN FETCH sa.servicePackage " +

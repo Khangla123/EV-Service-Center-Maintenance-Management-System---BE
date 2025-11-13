@@ -3,6 +3,8 @@ package com.swp391.EV.service.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -55,6 +57,10 @@ public class ServiceAppointment {
 
     @Column(name = "actual_completion")
     private LocalDateTime actualCompletion;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "selected_packages", columnDefinition = "jsonb")
+    private String selectedPackages; // JSON array of selected service packages
 
     @Column(name = "created_at")
     @Builder.Default
