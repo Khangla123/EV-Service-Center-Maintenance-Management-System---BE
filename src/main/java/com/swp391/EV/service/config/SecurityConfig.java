@@ -158,8 +158,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/maintenance-history/test").permitAll() // test maintenance endpoint
 
                         // MaintenanceHistoryController - Lịch sử bảo dưỡng
-                        // Removed permitAll - using @PreAuthorize in controller instead
-                        
+
                         .anyRequest().authenticated()
                 );
 

@@ -84,12 +84,14 @@ public class PaymentController {
     @Operation(summary = "Tạo URL thanh toán VNPay", description = "Create VNPay payment URL - Tạo link để redirect customer đến trang thanh toán VNPay")
     public ApiResponse<String> createVNPayPayment(
             @RequestParam UUID invoiceId,
-            @RequestParam long amount,
+            @RequestParam double amount,
             @RequestParam(required = false, defaultValue = "Thanh toán hóa đơn") String orderInfo,
             HttpServletRequest request) throws UnsupportedEncodingException {
 
         String ipAddress = getClientIP(request);
-        String paymentUrl = vnPayService.createPaymentUrl(invoiceId, amount, orderInfo, ipAddress);
+        // Convert double to long (round to nearest integer)
+        long amountLong = Math.round(amount);
+        String paymentUrl = vnPayService.createPaymentUrl(invoiceId, amountLong, orderInfo, ipAddress);
 
         return ApiResponse.<String>builder()
                 .message("Tạo URL thanh toán VNPay thành công.")
@@ -115,10 +117,12 @@ public class PaymentController {
     @Operation(summary = "Tạo URL thanh toán giả lập", description = "Create mock payment URL - Tạo link giả lập cho mục đích demo/testing")
     public ApiResponse<String> createMockPayment(
             @RequestParam UUID invoiceId,
-            @RequestParam long amount,
+            @RequestParam double amount,
             @RequestParam(required = false, defaultValue = "Thanh toán hóa đơn") String orderInfo) {
 
-        String mockPaymentUrl = mockPaymentService.createMockPaymentUrl(invoiceId, amount, orderInfo);
+        // Convert double to long (round to nearest integer)
+        long amountLong = Math.round(amount);
+        String mockPaymentUrl = mockPaymentService.createMockPaymentUrl(invoiceId, amountLong, orderInfo);
 
         return ApiResponse.<String>builder()
                 .message("Tạo URL thanh toán giả lập thành công.")

@@ -11,7 +11,6 @@ public class VNPayConfig {
 
     private String vnpUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
     private String returnUrl = "http://localhost:3000/payment/result"; // URL frontend nhận kết quả
-    // VNPay Sandbox Test Credentials (public demo)
     private String tmnCode = "DEMOV210";  // Demo merchant code
     private String secretKey = "GECKPDSQTMXVYSNSRHTFUZWARXNYAEPH"; // Demo secret key
     private String version = "2.1.0";
