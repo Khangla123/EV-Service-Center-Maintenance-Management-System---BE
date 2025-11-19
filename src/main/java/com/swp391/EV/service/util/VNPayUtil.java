@@ -37,9 +37,18 @@ public class VNPayUtil {
             String fieldName = itr.next();
             String fieldValue = fields.get(fieldName);
             if ((fieldValue != null) && (fieldValue.length() > 0)) {
-                sb.append(fieldName);
-                sb.append("=");
-                sb.append(fieldValue);
+                // URL encode cả key và value giống createPaymentUrl
+                try {
+                    String encodedName = java.net.URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString());
+                    String encodedValue = java.net.URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString());
+                    sb.append(encodedName);
+                    sb.append("=");
+                    sb.append(encodedValue);
+                } catch (Exception e) {
+                    sb.append(fieldName);
+                    sb.append("=");
+                    sb.append(fieldValue);
+                }
             }
             if (itr.hasNext()) {
                 sb.append("&");

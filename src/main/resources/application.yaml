@@ -52,9 +52,9 @@ jwt:
 # VNPay Payment Gateway Configuration
 vnpay:
   vnp-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-  return-url: http://localhost:3000/payment/callback
-  tmn-code: DEMOMERCHANT
-  secret-key: RAOEXHYVSDDIIENYWSLDIIZTANXUXZFJ
+  return-url: http://localhost:3000/customer/payment/result
+  tmn-code: LPWLW9YS
+  secret-key: P3X4FLGZX2YIPN1E26EDZL7G199RCIXX
   version: 2.1.0
   command: pay
   order-type: other
