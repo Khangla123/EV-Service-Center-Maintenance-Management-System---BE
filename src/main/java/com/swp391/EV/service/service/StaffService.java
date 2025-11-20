@@ -14,6 +14,7 @@ import com.swp391.EV.service.repository.ServiceAppointmentRepository;
 import com.swp391.EV.service.repository.StaffRepository;
 import com.swp391.EV.service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,10 +31,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StaffService {
 
+    @Autowired
     private final StaffRepository staffRepository;
+    @Autowired
     private final UserRepository userRepository;
+    @Autowired
     private final ServiceCenterRepository serviceCenterRepository;
+    @Autowired
     private final ServiceAppointmentRepository appointmentRepository;
+    @Autowired
     private final PasswordEncoder passwordEncoder;
 
     @Transactional

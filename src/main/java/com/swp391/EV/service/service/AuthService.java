@@ -39,6 +39,7 @@ import java.util.UUID;
 
 @Service
 public class AuthService {
+
     @Value("${jwt.signer-key}")
     private String KEY;
     @Value("${jwt.expiration-duration}")
@@ -78,7 +79,6 @@ public class AuthService {
         }
 
         String token = generateToken(user);
-
         LoginResponse resp = LoginResponse.builder()
                 .userId(user.getId())
                 .email(user.getEmail())
@@ -93,17 +93,6 @@ public class AuthService {
         return resp;
     }
 
-
-    // token
-    public IntrospectResponse introspect(String token) {
-        boolean isValid = true;
-        try {
-            verifyToken(token);
-        } catch (Exception e) {
-            isValid = false;
-        }
-        return IntrospectResponse.builder().valid(isValid).build();
-    }
 
     private void verifyToken(String token) throws JOSEException, ParseException {
         JWSVerifier verifier = new MACVerifier(KEY.getBytes());
@@ -135,15 +124,6 @@ public class AuthService {
         return generateToken(user);
     }
 
-    public UUID extractUserIdFromToken(String token) {
-        try {
-            SignedJWT signedJWT = SignedJWT.parse(token);
-            String subject = signedJWT.getJWTClaimsSet().getSubject();
-            return UUID.fromString(subject);
-        } catch (Exception e) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-    }
 
     public void requestPasswordRequest(String email) {
         userRepository.findByEmail(email)

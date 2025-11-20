@@ -1,7 +1,6 @@
 package com.swp391.EV.service.service;
 
 import com.swp391.EV.service.dto.request.CreateAppointmentRequest;
-import com.swp391.EV.service.dto.request.CreateInvoiceRequest;
 import com.swp391.EV.service.dto.request.UpdateAppointmentRequest;
 import com.swp391.EV.service.dto.response.AppointmentResponse;
 import com.swp391.EV.service.exception.AppException;
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -40,13 +38,7 @@ public class AppointmentService {
     @Autowired
     private final StaffRepository staffRepository;
     @Autowired
-    private final ServiceOrderRepository serviceOrderRepository;
-    @Autowired
     private final ModelMapper modelMapper;
-    
-    // Inject InvoiceService để tự động tạo invoice
-    @Autowired
-    private InvoiceService invoiceService;
 
     public List<AppointmentResponse> getAllAppointments() {
         return appointmentRepository.findAllWithDetails().stream()
@@ -73,7 +65,7 @@ public class AppointmentService {
                 .vehicle(vehicle)
                 .serviceCenter(serviceCenter)
                 .servicePackage(servicePackage)
-                .selectedPackages(request.getSelectedPackages()) // ✅ Save selected packages JSON
+                .selectedPackages(request.getSelectedPackages())
                 .appointmentDate(request.getAppointmentDate())
                 .notes(request.getNotes())
                 .status(ServiceAppointment.AppointmentStatus.PENDING)
@@ -216,7 +208,7 @@ public class AppointmentService {
     }
 
     /**
-     * Staff hủy lịch hẹn
+     * Staff hủy lịch hẹn với lý do
      */
     @Transactional
     public AppointmentResponse cancelAppointment(UUID appointmentId, String reason) {
@@ -255,158 +247,146 @@ public class AppointmentService {
         return convertToResponse(startedAppointment);
     }
 
+    /**
+     * Mục đích chính: Chuyển đổi entity ServiceAppointment (dữ liệu từ database)
+     * sang AppointmentResponse DTO (dữ liệu gửi cho client)Chuyển đổi ServiceAppointment entity
+     * sang AppointmentResponse DTO
+     * Phương thức này xử lý việc map dữ liệu từ các entity liên quan sang response object
+     * để trả về cho client, đảm bảo không bị lỗi khi các relationship null
+     */
     private AppointmentResponse convertToResponse(ServiceAppointment appointment) {
         AppointmentResponse response = new AppointmentResponse();
+        // Set ID của appointment
         response.setId(appointment.getId());
         
-        // Handle customer with null safety
+        // === XỬ LÝ THÔNG TIN KHÁCH HÀNG ===
+        // Kiểm tra và set thông tin customer (có thể null)
         if (appointment.getCustomer() != null) {
             try {
                 response.setCustomerId(appointment.getCustomer().getId());
                 response.setCustomerName(appointment.getCustomer().getFullName());
                 response.setCustomerPhone(appointment.getCustomer().getPhone());
             } catch (Exception e) {
-                // Handle lazy loading exception
+                // Nếu có lỗi khi lấy thông tin customer (lazy loading issue), set giá trị mặc định
                 response.setCustomerId(null);
                 response.setCustomerName("Unknown");
                 response.setCustomerPhone(null);
             }
         }
         
+        // === XỬ LÝ THÔNG TIN XE ===
+        // Kiểm tra và set thông tin vehicle
         if (appointment.getVehicle() != null) {
             try {
                 UUID vehicleId = appointment.getVehicle().getId();
                 response.setVehicleId(vehicleId);
                 response.setVehicleLicensePlate(appointment.getVehicle().getLicensePlate());
 
+                // Lấy thêm thông tin model của xe (nested relationship)
                 if (appointment.getVehicle().getVehicleModel() != null) {
                     response.setVehicleModel(appointment.getVehicle().getVehicleModel().getModel());
                 }
             } catch (Exception e) {
-                // Handle lazy loading exception
+                // Nếu lỗi khi lấy thông tin xe, set null
                 response.setVehicleId(null);
             }
         }
         
+        // === XỬ LÝ THÔNG TIN TRUNG TÂM DỊCH VỤ ===
         if (appointment.getServiceCenter() != null) {
             try {
                 response.setServiceCenterId(appointment.getServiceCenter().getId());
                 response.setServiceCenterName(appointment.getServiceCenter().getName());
             } catch (Exception e) {
-                // Handle lazy loading exception
                 response.setServiceCenterId(null);
             }
         }
         
+        // === XỬ LÝ THÔNG TIN GÓI DỊCH VỤ CHÍNH ===
         if (appointment.getServicePackage() != null) {
             try {
                 response.setServicePackageId(appointment.getServicePackage().getId());
                 response.setServicePackageName(appointment.getServicePackage().getName());
             } catch (Exception e) {
-                // Handle lazy loading exception
                 response.setServicePackageId(null);
             }
         }
         
-        // Map selected packages JSON
+        // === XỬ LÝ CỘT SELECTED_PACKAGES (JSON STRING) ===
+        // Cột này lưu danh sách UUID của các gói dịch vụ được chọn dưới dạng JSON string
+        // Ví dụ: ["uuid1", "uuid2", "uuid3"]
         response.setSelectedPackages(appointment.getSelectedPackages());
         
-        // Parse selected packages and get names
+        // Parse JSON string để lấy tên các gói dịch vụ
         if (appointment.getSelectedPackages() != null && !appointment.getSelectedPackages().trim().isEmpty()) {
             try {
+                // Sử dụng Jackson ObjectMapper để parse JSON string
                 ObjectMapper mapper = new ObjectMapper();
+                // Parse JSON string thành List<String> chứa các UUID
                 List<String> packageIdStrings = mapper.readValue(
                     appointment.getSelectedPackages(), 
                     new TypeReference<List<String>>() {}
                 );
                 
-                // Convert strings to UUIDs and fetch package names
+                // Với mỗi UUID string, query database để lấy tên gói dịch vụ
                 List<String> packageNames = packageIdStrings.stream()
                     .map(idStr -> {
                         try {
+                            // Chuyển string UUID thành UUID object
                             UUID packageId = UUID.fromString(idStr);
+                            // Tìm service package trong database và lấy tên
                             return servicePackageRepository.findById(packageId)
                                 .map(ServicePackage::getName)
-                                .orElse("Unknown Package");
+                                .orElse("Unknown Package"); // Nếu không tìm thấy
                         } catch (Exception e) {
+                            // Nếu UUID không hợp lệ
                             return "Invalid Package";
                         }
                     })
                     .collect(Collectors.toList());
                 
+                // Join tất cả tên gói dịch vụ thành một chuỗi, phân cách bằng dấu phẩy
+                // Ví dụ: "Gói A, Gói B, Gói C"
                 response.setSelectedPackageNames(String.join(", ", packageNames));
             } catch (Exception e) {
-                // Fallback to single package name
-                response.setSelectedPackageNames(appointment.getServicePackage() != null ? 
+                // Nếu parse JSON thất bại, fallback về gói dịch vụ chính
+                response.setSelectedPackageNames(appointment.getServicePackage() != null ?
                     appointment.getServicePackage().getName() : null);
             }
         } else {
-            // No selected packages, use service package name
-            response.setSelectedPackageNames(appointment.getServicePackage() != null ? 
+            // Nếu không có selected_packages (null hoặc rỗng),
+            // sử dụng tên của gói dịch vụ chính làm mặc định
+            response.setSelectedPackageNames(appointment.getServicePackage() != null ?
                 appointment.getServicePackage().getName() : null);
         }
         
-        // Map technician information
+        // === XỬ LÝ THÔNG TIN KỸ THUẬT VIÊN ===
+        // Technician được gán để thực hiện công việc
         if (appointment.getTechnician() != null) {
             try {
                 response.setTechnicianId(appointment.getTechnician().getId());
+                // Lấy tên từ User entity liên kết với Staff (nested relationship)
                 if (appointment.getTechnician().getUser() != null) {
                     response.setTechnicianName(appointment.getTechnician().getUser().getFullName());
                 }
             } catch (Exception e) {
-                // Handle lazy loading exception
                 response.setTechnicianId(null);
             }
         }
         
-        response.setAppointmentDate(appointment.getAppointmentDate());
-        response.setStatus(appointment.getStatus());
-        response.setNotes(appointment.getNotes());
-        response.setEstimatedCompletion(appointment.getEstimatedCompletion());
-        response.setActualCompletion(appointment.getActualCompletion());
-        response.setCreatedAt(appointment.getCreatedAt());
-        response.setUpdatedAt(appointment.getUpdatedAt());
+        // === SET CÁC TRƯỜNG THÔNG TIN CƠ BẢN ===
+        response.setAppointmentDate(appointment.getAppointmentDate());  // Ngày hẹn
+        response.setStatus(appointment.getStatus());  // Trạng thái: PENDING, CONFIRMED, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
+        response.setNotes(appointment.getNotes());  // Ghi chú
+        response.setEstimatedCompletion(appointment.getEstimatedCompletion());  // Thời gian dự kiến hoàn thành
+        response.setActualCompletion(appointment.getActualCompletion());  // Thời gian thực tế hoàn thành
+        response.setCreatedAt(appointment.getCreatedAt());  // Thời gian tạo
+        response.setUpdatedAt(appointment.getUpdatedAt());  // Thời gian cập nhật cuối
+
         return response;
     }
     
-    /**
-     * Tự động tạo invoice khi appointment được hoàn thành
-     */
-    private void createInvoiceForCompletedAppointment(ServiceAppointment appointment) {
-        // 1. Kiểm tra xem đã có service order chưa
-        Optional<ServiceOrder> serviceOrderOpt = serviceOrderRepository.findByAppointmentId(appointment.getId());
-        
-        if (serviceOrderOpt.isEmpty()) {
-            return;
-        }
-        
-        ServiceOrder serviceOrder = serviceOrderOpt.get();
-        
-        // 2. Kiểm tra xem đã có invoice chưa (tránh tạo trùng)
-        if (invoiceService.getInvoiceByServiceOrderId(serviceOrder.getId()) != null) {
-            return;
-        }
-        
-        // 3. Tính toán chi phí từ service package
-        BigDecimal subtotal = BigDecimal.ZERO;
-        if (appointment.getServicePackage() != null && appointment.getServicePackage().getPrice() != null) {
-            subtotal = appointment.getServicePackage().getPrice();
-        }
-        
-        // 4. Tính thuế (10%)
-        BigDecimal taxAmount = subtotal.multiply(new BigDecimal("0.10"));
-        
-        // 5. Tạo invoice request
-        CreateInvoiceRequest invoiceRequest = new CreateInvoiceRequest();
-        invoiceRequest.setServiceOrderId(serviceOrder.getId());
-        invoiceRequest.setSubtotal(subtotal);
-        invoiceRequest.setTaxAmount(taxAmount);
-        invoiceRequest.setDiscountAmount(BigDecimal.ZERO);
-        invoiceRequest.setDueDate(LocalDateTime.now().plusDays(7)); // Hạn thanh toán 7 ngày
-        
-        // 6. Tạo invoice
-        invoiceService.createInvoice(invoiceRequest);
-    }
+
 
     /**
      * Lấy danh sách gói dịch vụ của appointment (hỗ trợ multiple packages)
@@ -416,11 +396,9 @@ public class AppointmentService {
         ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
         
-        // Try to parse selected_packages JSON field first
         String selectedPackagesJson = appointment.getSelectedPackages();
         if (selectedPackagesJson != null && !selectedPackagesJson.isEmpty() && !selectedPackagesJson.equals("[]")) {
             try {
-                // Parse JSON array: [{"packageId": "uuid", "packageName": "...", "price": 1200000}, ...]
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 java.util.List<java.util.Map<String, Object>> packages = 
                     mapper.readValue(selectedPackagesJson, new com.fasterxml.jackson.core.type.TypeReference<>() {});
@@ -437,18 +415,14 @@ public class AppointmentService {
                                 .build())
                         .collect(Collectors.toList());
             } catch (Exception e) {
-                // Ignore parsing errors
             }
         }
         
-        // FALLBACK: Return single package from service_package_id (for backward compatibility)
         if (appointment.getServicePackage() == null) {
-            return List.of(); // Không có gói nào
+            return List.of();
         }
         
-        // Force initialize the lazy proxy within transaction
         ServicePackage pkg = appointment.getServicePackage();
-        // Access properties to trigger initialization
         pkg.getName();
         
         return List.of(
@@ -462,4 +436,3 @@ public class AppointmentService {
         );
     }
 }
-

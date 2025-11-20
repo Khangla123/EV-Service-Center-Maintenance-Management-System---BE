@@ -27,13 +27,10 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
-
     @Autowired
     private CustomerRepository customerRepository;
-
     @Autowired
     private PasswordEncoder passwordEncoder;
-
     @Autowired
     private AuthService authService;
 

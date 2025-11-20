@@ -11,6 +11,7 @@ import com.swp391.EV.service.model.ServiceCenter;
 import com.swp391.EV.service.repository.PartRepository;
 import com.swp391.EV.service.repository.ServiceCenterRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +23,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PartService {
 
+    @Autowired
     private final PartRepository partRepository;
+    @Autowired
     private final ServiceCenterRepository serviceCenterRepository;
 
     @Transactional

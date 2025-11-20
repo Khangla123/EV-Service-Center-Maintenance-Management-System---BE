@@ -12,13 +12,9 @@ import java.util.UUID;
 
 public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
-    Optional<Customer> findByCustomerCode(String customerCode);
+    Optional<Customer> findByUserId(UUID userId);
 
     Optional<Customer> findByEmail(String email);
-
-    Optional<Customer> findByUsername(String username);
-
-    Optional<Customer> findByUserId(UUID userId); // Thêm method này
 
     @Query("SELECT c FROM Customer c WHERE " +
            "(:search IS NULL OR :search = '' OR " +

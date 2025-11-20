@@ -32,10 +32,8 @@ public class CustomerService {
 
     @Autowired
     private CustomerRepository customerRepository;
-
     @Autowired
     private UserRepository userRepository;
-
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -61,26 +59,22 @@ public class CustomerService {
             );
         }
 
-        // Check if email already exists in users table
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
         }
 
-        // Step 1: Create User first
-        // Use password from request if provided, otherwise generate temporary password
-        String password = request.getPassword() != null && !request.getPassword().isBlank() 
+        String password = request.getPassword() != null && !request.getPassword().isBlank()
                 ? request.getPassword() 
                 : generateTemporaryPassword();
-        
-        // Generate username from email (part before @)
+
         String username = request.getEmail().split("@")[0];
         
         User user = User.builder()
-                .username(username) // Required field
+                .username(username)
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(password))
                 .fullName(request.getFullName())
-                .role("customer") // lowercase role
+                .role("customer")
                 .isActive(true)
                 .emailVerified(false)
                 .createdAt(OffsetDateTime.now())
@@ -89,11 +83,10 @@ public class CustomerService {
         
         User savedUser = userRepository.save(user);
 
-        // Step 2: Create Customer with reference to User
         Customer customer = Customer.builder()
-                .userId(savedUser.getId()) // FK to users table
-                .email(request.getEmail()) // Set email in customer table too
-                .fullName(request.getFullName()) // Set fullName
+                .userId(savedUser.getId())
+                .email(request.getEmail())
+                .fullName(request.getFullName())
                 .customerCode(request.getCustomerCode() != null ? request.getCustomerCode() : generateCustomerCode())
                 .phone(request.getPhone())
                 .address(request.getAddress())
@@ -111,14 +104,12 @@ public class CustomerService {
     public CustomerProfileResponse getCustomerById(UUID id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
         return buildCustomerProfileResponse(customer);
     }
 
     public CustomerProfileResponse getCustomerByUserId(UUID userId) {
         Customer customer = customerRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-        
         return buildCustomerProfileResponse(customer);
     }
 
@@ -127,7 +118,6 @@ public class CustomerService {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // Update user fields
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             if (!request.getEmail().equals(customer.getEmail()) &&
                 customerRepository.existsByEmail(request.getEmail())) {
@@ -160,7 +150,6 @@ public class CustomerService {
             customer.setActive(request.getIsActive());
         }
 
-        // Update customer fields
         if (request.getCustomerCode() != null && !request.getCustomerCode().isBlank()) {
             if (!request.getCustomerCode().equals(customer.getCustomerCode()) &&
                 customerRepository.existsByCustomerCode(request.getCustomerCode())) {
@@ -183,50 +172,6 @@ public class CustomerService {
         return buildCustomerResponse(updatedCustomer);
     }
 
-    public CustomerProfileResponse getMyProfile() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Customer customer = customerRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        return buildCustomerProfileResponse(customer);
-    }
-
-    @Transactional
-    public CustomerResponse updateMyProfile(CustomerUpdateRequest request) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Customer customer = customerRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        // Customer can only update certain fields
-        if (request.getUsername() != null && !request.getUsername().isBlank()) {
-            if (!request.getUsername().equals(customer.getUsername()) &&
-                customerRepository.existsByUsername(request.getUsername())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Username đã tồn tại");
-            }
-            customer.setUsername(request.getUsername());
-        }
-
-        if (request.getFullName() != null && !request.getFullName().isBlank()) {
-            customer.setFullName(request.getFullName());
-        }
-
-        if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            customer.setPhone(request.getPhone());
-        }
-
-        if (request.getAddress() != null && !request.getAddress().isBlank()) {
-            customer.setAddress(request.getAddress());
-        }
-
-        if (request.getDateOfBirth() != null) {
-            customer.setDateOfBirth(request.getDateOfBirth());
-        }
-
-        customer.setUserUpdatedAt(OffsetDateTime.now());
-        Customer updatedCustomer = customerRepository.save(customer);
-
-        return buildCustomerResponse(updatedCustomer);
-    }
 
     private CustomerResponse buildCustomerResponse(Customer customer) {
         return CustomerResponse.builder()
@@ -257,7 +202,7 @@ public class CustomerService {
                 .subscriptionExpiry(customer.getSubscriptionExpiry())
                 .totalSpent(customer.getTotalSpent())
                 .createdAt(customer.getCreatedAt())
-                .userId(customer.getId()) // Same as customer ID since they're the same entity
+                .userId(customer.getId())
                 .username(customer.getUsername())
                 .email(customer.getEmail())
                 .fullName(customer.getFullName())

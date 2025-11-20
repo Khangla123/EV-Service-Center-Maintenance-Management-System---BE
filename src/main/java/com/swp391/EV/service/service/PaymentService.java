@@ -11,6 +11,7 @@ import com.swp391.EV.service.repository.InvoiceRepository;
 import com.swp391.EV.service.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +24,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PaymentService {
 
+    @Autowired
     private final PaymentRepository paymentRepository;
+    @Autowired
     private final InvoiceRepository invoiceRepository;
+    @Autowired
     private final ModelMapper modelMapper;
 
     @Transactional

@@ -16,6 +16,7 @@ import com.swp391.EV.service.repository.ServiceAppointmentRepository;
 import com.swp391.EV.service.repository.ServicePackageRepository;
 import com.swp391.EV.service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,10 +34,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MaintenanceHistoryService {
 
+    @Autowired
     private final ServiceAppointmentRepository serviceAppointmentRepository;
+    @Autowired
     private final CustomerRepository customerRepository;
+    @Autowired
     private final UserRepository userRepository;
+    @Autowired
     private final ServicePackageRepository servicePackageRepository;
+    @Autowired
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
@@ -81,7 +87,7 @@ public class MaintenanceHistoryService {
         int totalMaintenances = historyList.size();
         BigDecimal totalCost = historyList.stream()
                 .map(MaintenanceHistoryResponse::getTotalAmount)
-                .filter(amount -> amount != null)
+                .filter(java.util.Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal averageCost = totalMaintenances > 0

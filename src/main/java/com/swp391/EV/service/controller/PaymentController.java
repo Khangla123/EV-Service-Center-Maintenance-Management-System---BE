@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.UnsupportedEncodingException;
@@ -24,8 +25,11 @@ import java.util.UUID;
 @Tag(name = "Payments", description = "Payment Management APIs")
 public class PaymentController {
 
+    @Autowired
     private final PaymentService paymentService;
+    @Autowired
     private final VNPayService vnPayService;
+    @Autowired
     private final MockPaymentService mockPaymentService;
 
     @GetMapping

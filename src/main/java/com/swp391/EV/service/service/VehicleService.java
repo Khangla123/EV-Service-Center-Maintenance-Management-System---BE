@@ -168,7 +168,7 @@ public class VehicleService {
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // Soft delete
+        // Xóa mềm (soft delete)
         vehicle.setIsActive(false);
         vehicle.setUpdatedAt(LocalDateTime.now());
         vehicleRepository.save(vehicle);
@@ -200,13 +200,13 @@ public class VehicleService {
         VehicleResponse response = new VehicleResponse();
         response.setId(vehicle.getId());
 
-        // Customer info
+        // Thông tin khách hàng
         if (vehicle.getCustomer() != null) {
             response.setCustomerId(vehicle.getCustomer().getId());
             response.setCustomerName(vehicle.getCustomer().getFullName());
         }
 
-        // VehicleModel info
+        // Thông tin VehicleModel
         if (vehicle.getVehicleModel() != null) {
             response.setVehicleModelId(vehicle.getVehicleModel().getId());
             response.setManufacturer(vehicle.getVehicleModel().getManufacturer());

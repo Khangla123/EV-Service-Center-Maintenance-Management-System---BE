@@ -9,6 +9,7 @@ import com.swp391.EV.service.service.PartService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @Tag(name = "Parts", description = "Parts Inventory Management APIs")
 public class PartController {
 
+    @Autowired
     private final PartService partService;
 
     @GetMapping

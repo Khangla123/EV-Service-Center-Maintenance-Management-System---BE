@@ -9,6 +9,7 @@ import com.swp391.EV.service.model.*;
 import com.swp391.EV.service.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,20 +25,26 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ServiceOrderService {
 
-    // Constants for log messages
-    private static final String SERVICE_ORDER_FOUND = "Service Order found: {}";
+    // Constants cho log messages
+    private static final String SERVICE_ORDER_FOUND = "Đã tìm thấy Service Order: {}";
     private static final String SERVICE_ORDER_ID_LOG = "Service Order ID: {}";
-
+    @Autowired
     private final ServiceOrderRepository serviceOrderRepository;
+    @Autowired
     private final ServiceAppointmentRepository appointmentRepository;
+    @Autowired
     private final StaffRepository staffRepository;
+    @Autowired
     private final MaintenancePlanRepository maintenancePlanRepository;
+    @Autowired
     private final ServiceOrderPartRepository serviceOrderPartRepository;
+    @Autowired
     private final PartRepository partRepository;
+    @Autowired
     private final ServiceSuggestionRepository serviceSuggestionRepository;
 
     public List<ServiceOrderResponse> getAllServiceOrders() {
-        // Use JOIN FETCH query to eagerly load customer and vehicle
+        // Sử dụng JOIN FETCH query để eager load customer và vehicle
         List<ServiceOrder> serviceOrders = serviceOrderRepository.findAllWithCustomerAndVehicle();
         
         return serviceOrders.stream()
@@ -54,7 +61,7 @@ public class ServiceOrderService {
         ServiceAppointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
 
-        // Technician co the null khi tao moi (chua phan cong)
+        // Technician có thể null khi tạo mới (chưa phân công)
         UUID technicianUserId = null;
         if (request.getTechnicianId() != null) {
             // Tìm staff theo ID để kiểm tra và lấy user.id
@@ -63,14 +70,14 @@ public class ServiceOrderService {
             technicianUserId = technicianStaff.getUser().getId();
         }
 
-        // Generate order code
+        // Tạo mã order code
         String orderCode = "SO" + System.currentTimeMillis();
 
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
                 .technicianUserId(technicianUserId) // Lưu user.id vào DB
-                // NOTE: Status removed - managed in appointment.status
+                // LƯU Ý: Status đã bỏ - được quản lý trong appointment.status
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -190,64 +197,40 @@ public class ServiceOrderService {
      */
     @Transactional
     public ServiceOrderResponse createServiceOrderFromAppointment(UUID appointmentId, UUID technicianId) {
-        log.info("=== CREATE SERVICE ORDER FROM APPOINTMENT - START ===");
-        log.info("Input appointmentId: {}", appointmentId);
-        log.info("Input technicianId: {}", technicianId);
-        
         // 1. Kiểm tra Appointment có tồn tại và đã CONFIRMED chưa
         ServiceAppointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_FOUND));
 
-        log.info("=== VALIDATION CHECK ===");
-        log.info("Appointment ID: {}", appointmentId);
-        log.info("Appointment Status: {}", appointment.getStatus());
-        log.info("Appointment Customer: {}", appointment.getCustomer().getUsername());
-        log.info("Appointment Service Package: {}", appointment.getServicePackage().getName());
-        log.info("Required Status: CONFIRMED");
-
         // 2. Kiểm tra appointment đã được xác nhận chưa
         if (appointment.getStatus() != ServiceAppointment.AppointmentStatus.CONFIRMED) {
-            log.error("Appointment status is not CONFIRMED! Current status: {}", appointment.getStatus());
+            log.error("Trạng thái appointment không phải CONFIRMED! Trạng thái hiện tại: {}", appointment.getStatus());
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         // 3. Kiểm tra appointment đã có service order chưa (tránh tạo trùng)
         boolean hasExistingOrder = serviceOrderRepository.findByAppointmentId(appointmentId).isPresent();
-        log.info("Has existing service order: {}", hasExistingOrder);
-        
+
         if (hasExistingOrder) {
-            log.error("Appointment already has a service order!");
+            log.error("Appointment đã có service order rồi!");
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
-        
-        log.info("Validation passed!");
 
         // 4. Lấy thông tin kỹ thuật viên
-        // CRITICAL: technicianId là USER_ID từ frontend
+        // QUAN TRỌNG: technicianId là USER_ID từ frontend
         Staff technicianStaff = staffRepository.findByUserId(technicianId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
         
         UUID technicianUserId = technicianStaff.getUser().getId();
 
-        // Log để debug
-        log.debug("=== DEBUG CREATE SERVICE ORDER ===");
-        log.debug("Input technicianId (user.id from FE): {}", technicianId);
-        log.debug("Found Staff.id: {}", technicianStaff.getId());
-        log.debug("Found Staff.user.id: {}", technicianUserId);
-        log.debug("Will save technician_id to DB: {} (user.id)", technicianUserId);
-
-        // 5. Load checklist templates from maintenance_plans for ALL selected packages
+        // 5. Load checklist templates từ maintenance_plans cho TẤT CẢ các gói đã chọn
         String checklistJson = null;
         try {
             UUID vehicleModelId = appointment.getVehicle().getVehicleModel().getId();
             
-            // Parse selected_packages JSON array to get all package IDs
+            // Parse selected_packages JSON array để lấy tất cả package IDs
             java.util.List<UUID> selectedPackageIds = new java.util.ArrayList<>();
             
             if (appointment.getSelectedPackages() != null && !appointment.getSelectedPackages().trim().isEmpty()) {
-                log.info("=== PARSING SELECTED PACKAGES ===");
-                log.info("Selected packages JSON: {}", appointment.getSelectedPackages());
-                
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 java.util.List<String> packageIdStrings = mapper.readValue(
                     appointment.getSelectedPackages(),
@@ -257,24 +240,18 @@ public class ServiceOrderService {
                 for (String pkgIdStr : packageIdStrings) {
                     selectedPackageIds.add(UUID.fromString(pkgIdStr));
                 }
-                
-                log.info("Parsed {} package IDs: {}", selectedPackageIds.size(), selectedPackageIds);
             } else {
-                // Fallback: Use single service_package_id if selected_packages is empty
+                // Fallback: Sử dụng service_package_id đơn nếu selected_packages rỗng
                 UUID fallbackPackageId = appointment.getServicePackage().getId();
                 selectedPackageIds.add(fallbackPackageId);
-                log.warn("No selected_packages found, using fallback service_package_id: {}", fallbackPackageId);
+                log.warn("Không tìm thấy selected_packages, sử dụng service_package_id dự phòng: {}", fallbackPackageId);
             }
             
-            // Load and merge checklist templates from all packages
+            // Load và merge checklist templates từ tất cả các packages
             java.util.List<java.util.Map<String, Object>> mergedChecklist = new java.util.ArrayList<>();
             int orderCounter = 1;
             
-            log.info("=== LOADING CHECKLIST TEMPLATES FOR {} PACKAGES ===", selectedPackageIds.size());
-            
             for (UUID packageId : selectedPackageIds) {
-                log.info("Loading checklist for package ID: {}", packageId);
-                
                 Optional<MaintenancePlan> maintenancePlan = maintenancePlanRepository
                         .findByServicePackageIdAndVehicleModelId(packageId, vehicleModelId);
                 
@@ -285,9 +262,7 @@ public class ServiceOrderService {
                 
                 if (maintenancePlan.isPresent()) {
                     String templateJson = maintenancePlan.get().getChecklistTemplate();
-                    log.info("Found maintenance_plan_id: {}", maintenancePlan.get().getId());
-                    log.info("Checklist template preview: {}", templateJson != null ? templateJson.substring(0, Math.min(100, templateJson.length())) : "null");
-                    
+
                     // Parse checklist JSON array
                     if (templateJson != null && !templateJson.trim().isEmpty()) {
                         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -296,76 +271,54 @@ public class ServiceOrderService {
                             new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
                         );
                         
-                        // Re-number order field to avoid conflicts when merging
+                        // Re-number order field để tránh xung đột khi merge
                         for (java.util.Map<String, Object> item : checklistItems) {
                             item.put("order", orderCounter++);
                         }
                         
                         mergedChecklist.addAll(checklistItems);
-                        log.info("Added {} checklist items from package {}", checklistItems.size(), packageId);
                     }
                 } else {
-                    log.warn("No maintenance plan found for package ID: {}", packageId);
+                    log.warn("Không tìm thấy maintenance plan cho package ID: {}", packageId);
                 }
             }
             
-            // Convert merged checklist back to JSON string
+            // Chuyển merged checklist trở lại thành JSON string
             if (!mergedChecklist.isEmpty()) {
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 checklistJson = mapper.writeValueAsString(mergedChecklist);
-                log.info("=== MERGED CHECKLIST COMPLETE ===");
-                log.info("Total checklist items: {}", mergedChecklist.size());
-                log.info("Merged checklist JSON preview: {}", checklistJson.substring(0, Math.min(200, checklistJson.length())));
             } else {
-                log.warn("No checklist items found for any selected packages");
+                log.warn("Không tìm thấy checklist items nào cho các gói đã chọn");
             }
             
         } catch (Exception e) {
-            log.error("ERROR loading/merging checklist templates: {}", e.getMessage(), e);
+            log.error("LỖI khi load/merge checklist templates: {}", e.getMessage(), e);
         }
 
-        // 5. Tạo Service Order mới với technician đã được phân công
+        // 6. Tạo Service Order mới với technician đã được phân công
         String orderCode = "SO" + System.currentTimeMillis();
 
         ServiceOrder serviceOrder = ServiceOrder.builder()
                 .appointment(appointment)
                 .orderCode(orderCode)
-                .technician(technicianStaff) // Set Staff entity trực tiếp
-                .checklist(checklistJson) // Set checklist template từ maintenance_plans
+                .technician(technicianStaff)
+                .checklist(checklistJson)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        log.debug("=== BEFORE SAVE SERVICE ORDER ===");
-        log.debug("Service Order - orderCode: {}, appointmentId: {}, technicianId: {}", 
-                  serviceOrder.getOrderCode(), 
-                  serviceOrder.getAppointment().getId(), 
-                  serviceOrder.getTechnician().getId());
-
         ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
 
-        log.info("=== SERVICE ORDER SAVED ===");
-        log.info("Saved Service Order - id: {}, orderCode: {}, appointmentId: {}, technicianId: {}", 
-                 savedOrder.getId(), 
-                 savedOrder.getOrderCode(), 
-                 savedOrder.getAppointment().getId(), 
-                 savedOrder.getTechnician().getId());
-
-        // 6. Cập nhật trạng thái appointment thành ASSIGNED và gán technician (Staff)
+        // 7. Cập nhật trạng thái appointment thành ASSIGNED và gán technician
         appointment.setStatus(ServiceAppointment.AppointmentStatus.ASSIGNED);
-        appointment.setTechnician(technicianStaff); // Gán Staff vào appointment để hiển thị tên
+        appointment.setTechnician(technicianStaff);
         appointmentRepository.save(appointment);
-
-        log.info("=== APPOINTMENT UPDATED ===");
-        log.info("Appointment status changed to: {}", appointment.getStatus());
-        log.info("Appointment technician set to: {}", technicianStaff.getUser().getFullName());
-        log.info("=== CREATE SERVICE ORDER COMPLETED ===");
 
         return convertToResponse(savedOrder);
     }
 
     /**
-     * Get service order by appointment ID
+     * Lấy service order theo appointment ID
      */
     public ServiceOrderResponse getServiceOrderByAppointmentId(UUID appointmentId) {
         ServiceOrder serviceOrder = serviceOrderRepository.findByAppointmentId(appointmentId)
@@ -374,44 +327,28 @@ public class ServiceOrderService {
     }
 
     public ServiceOrderResponse updateIssues(UUID serviceOrderId, String issuesJson) {
-        log.info("=== UPDATE ISSUES - START ===");
-        log.info(SERVICE_ORDER_ID_LOG, serviceOrderId);
-        log.debug("Issues JSON received: {}", issuesJson);
-        
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
-        
-        log.info(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
-        log.debug("Old issues: {}", serviceOrder.getIssues());
-        
+
         serviceOrder.setIssues(issuesJson);
         serviceOrder.setUpdatedAt(LocalDateTime.now());
         
         ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
         
-        log.info("Issues updated successfully for Service Order: {}", savedOrder.getOrderCode());
-        log.debug("New issues: {}", savedOrder.getIssues());
-        
         return convertToResponse(savedOrder);
     }
 
     /**
-     * Set price for a specific issue (Staff/Admin only)
+     * Set giá cho một issue cụ thể (chỉ Staff/Admin)
      * @param serviceOrderId Service order ID
-     * @param issueId Issue ID to update price
-     * @param price Price to set
-     * @return Updated service order
+     * @param issueId Issue ID cần cập nhật giá
+     * @param price Giá cần set
+     * @return Service order đã cập nhật
      */
     @Transactional
     public ServiceOrderResponse setIssuePrice(UUID serviceOrderId, String issueId, Double price) {
-        log.info("=== SET ISSUE PRICE - START ===");
-        log.info(SERVICE_ORDER_ID_LOG, serviceOrderId);
-        log.info("Issue ID: {}, Price: {}", issueId, price);
-        
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
-        
-        log.info(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
         
         try {
             // Parse issues JSON
@@ -421,78 +358,64 @@ public class ServiceOrderService {
                 new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
             );
             
-            // Find and update the specific issue
+            // Tìm và cập nhật issue cụ thể
             boolean found = false;
             for (java.util.Map<String, Object> issue : issuesList) {
                 if (issueId.equals(issue.get("id"))) {
                     issue.put("price", price);
                     issue.put("staffSetPrice", true);
                     found = true;
-                    log.info("Updated price for issue: {}", issueId);
                     break;
                 }
             }
             
             if (!found) {
-                log.error("Issue not found: {}", issueId);
+                log.error("Không tìm thấy issue: {}", issueId);
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
             
-            // Save updated issues
+            // Lưu issues đã cập nhật
             String updatedIssuesJson = mapper.writeValueAsString(issuesList);
             serviceOrder.setIssues(updatedIssuesJson);
             serviceOrder.setUpdatedAt(LocalDateTime.now());
             
             ServiceOrder savedOrder = serviceOrderRepository.save(serviceOrder);
-            log.info("=== SET ISSUE PRICE - COMPLETED ===");
-            
+
             return convertToResponse(savedOrder);
             
         } catch (Exception e) {
-            log.error("Error setting issue price: {}", e.getMessage(), e);
+            log.error("Lỗi khi set giá issue: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
     }
 
     /**
-     * Add parts used to service order
+     * Thêm phụ tùng đã sử dụng vào service order
      * @param serviceOrderId Service order ID
      * @param partsJson JSON array: [{"partCode": "PT001", "partName": "...", "quantity": 2, "unit": "cái"}]
      */
     @Transactional
     public ServiceOrderResponse addPartsUsed(UUID serviceOrderId, String partsJson) {
-        log.info("=== ADD PARTS USED - START ===");
-        log.info(SERVICE_ORDER_ID_LOG, serviceOrderId);
-        log.debug("Parts JSON received: {}", partsJson);
-        
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
-        log.info(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
-        
         try {
-            // Parse JSON to list of part info
+            // Parse JSON thành list thông tin phụ tùng
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             java.util.List<java.util.Map<String, Object>> partsList = mapper.readValue(
                 partsJson, 
                 new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
             );
-            
-            log.info("Parsed {} parts", partsList.size());
-            
+
             for (java.util.Map<String, Object> partInfo : partsList) {
                 String partCode = (String) partInfo.get("partCode");
                 Integer quantity = (Integer) partInfo.get("quantity");
-                
-                log.debug("Processing part: {} x {}", partCode, quantity);
-                
-                // Find part by code
+
+                // Tìm phụ tùng theo mã
                 Part part = partRepository.findByPartCode(partCode)
                         .orElseThrow(() -> new AppException(ErrorCode.PART_NOT_FOUND));
-                
-                log.info("Found part: {} (ID: {}), Unit price: {}", part.getName(), part.getId(), part.getUnitPrice());
-                
-                // Create service_order_part record
+
+                // Tạo bản ghi service_order_part
                 ServiceOrderPart orderPart = ServiceOrderPart.builder()
                         .serviceOrder(serviceOrder)
                         .part(part)
@@ -502,20 +425,15 @@ public class ServiceOrderService {
                         .build();
                 
                 serviceOrderPartRepository.save(orderPart);
-                log.debug("Saved service_order_part record");
-                
-                // Update part stock quantity
-                int oldStock = part.getStockQuantity();
-                int newStock = oldStock - quantity;
+
+                // Cập nhật số lượng tồn kho phụ tùng
+                int newStock = part.getStockQuantity() - quantity;
                 part.setStockQuantity(newStock);
                 partRepository.save(part);
-                log.info("Updated stock for part {}: {} -> {}", partCode, oldStock, newStock);
             }
             
-            log.info("=== ADD PARTS USED - COMPLETED ===");
-            
         } catch (Exception e) {
-            log.error("Error parsing/saving parts: {}", e.getMessage(), e);
+            log.error("Lỗi khi parse/lưu phụ tùng: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         
@@ -523,36 +441,26 @@ public class ServiceOrderService {
     }
 
     /**
-     * Get parts used for a service order (Simple version - return count only)
+     * Lấy số lượng phụ tùng đã sử dụng cho service order (Phiên bản đơn giản - chỉ trả về số lượng)
      * @param serviceOrderId Service order ID
-     * @return Count of parts used
+     * @return Số lượng phụ tùng đã sử dụng
      */
     public int getPartsUsedCount(UUID serviceOrderId) {
-        log.debug("Getting parts used count for Service Order ID: {}", serviceOrderId);
-        
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
         List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
-        int count = parts.size();
-        
-        log.info("Found {} parts for Service Order: {}", count, serviceOrder.getOrderCode());
-        
-        return count;
+        return parts.size();
     }
 
     /**
-     * Get parts summary (count + total price)
+     * Lấy tóm tắt phụ tùng (số lượng + tổng giá)
      * @param serviceOrderId Service order ID
-     * @return Map with "count" and "total"
+     * @return Map với "count" và "total"
      */
     public java.util.Map<String, Object> getPartsUsedSummary(UUID serviceOrderId) {
-        log.debug("Getting parts summary for Service Order ID: {}", serviceOrderId);
-        
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
-        
-        log.debug(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
         
         List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
         int count = parts.size();
@@ -561,25 +469,20 @@ public class ServiceOrderService {
                 .map(ServiceOrderPart::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        log.info("Parts summary for Service Order {}: {} parts, Total: {}", serviceOrder.getOrderCode(), count, total);
-        
         return java.util.Map.of("count", count, "total", total);
     }
 
     /**
-     * Get detailed list of parts used
+     * Lấy danh sách chi tiết phụ tùng đã sử dụng
      * @param serviceOrderId Service order ID
-     * @return List of ServiceOrderPartResponse
+     * @return List của ServiceOrderPartResponse
      */
     public List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse> getPartsUsed(UUID serviceOrderId) {
-        log.debug("Getting parts list for Service Order ID: {}", serviceOrderId);
-        
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
         List<ServiceOrderPart> parts = serviceOrderPartRepository.findByServiceOrderId(serviceOrderId);
-        log.info("Found {} parts for Service Order: {}", parts.size(), serviceOrder.getOrderCode());
-        
+
         List<com.swp391.EV.service.dto.response.ServiceOrderPartResponse> response = new java.util.ArrayList<>();
         for (ServiceOrderPart sop : parts) {
             Part partEntity = sop.getPart();
@@ -595,29 +498,21 @@ public class ServiceOrderService {
             response.add(dto);
         }
         
-        log.debug("Get parts list completed");
-        
         return response;
     }
 
     /**
-     * Add service suggestion (recommended additional service)
+     * Thêm dịch vụ đề xuất (dịch vụ bổ sung được khuyến nghị)
      * @param serviceOrderId Service order ID
      * @param suggestionJson JSON: {"serviceName": "...", "reason": "...", "estimatedCost": 500000}
      */
     @Transactional
     public ServiceOrderResponse addServiceSuggestion(UUID serviceOrderId, String suggestionJson) {
-        log.info("=== ADD SERVICE SUGGESTION - START ===");
-        log.info(SERVICE_ORDER_ID_LOG, serviceOrderId);
-        log.debug("Suggestion JSON received: {}", suggestionJson);
-        
         ServiceOrder serviceOrder = serviceOrderRepository.findById(serviceOrderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
         
-        log.info(SERVICE_ORDER_FOUND, serviceOrder.getOrderCode());
-        
         try {
-            // Parse JSON to suggestion info
+            // Parse JSON thành thông tin suggestion
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             java.util.Map<String, Object> suggestionData = mapper.readValue(
                 suggestionJson, 
@@ -628,21 +523,19 @@ public class ServiceOrderService {
             String reason = (String) suggestionData.get("reason");
             Object costObj = suggestionData.get("estimatedCost");
             
-            // Handle estimatedCost - could be String or Number
+            // Xử lý estimatedCost - có thể là String hoặc Number
             BigDecimal estimatedCost = BigDecimal.ZERO;
             if (costObj != null) {
                 if (costObj instanceof Number) {
                     estimatedCost = BigDecimal.valueOf(((Number) costObj).doubleValue());
                 } else if (costObj instanceof String) {
-                    // Remove any non-numeric characters except dot
+                    // Xóa các ký tự không phải số trừ dấu chấm
                     String costStr = ((String) costObj).replaceAll("[^0-9.]", "");
                     estimatedCost = new BigDecimal(costStr);
                 }
             }
-            
-            log.info("Service: {}, Reason: {}, Estimated cost: {}", serviceName, reason, estimatedCost);
-            
-            // Create service suggestion record
+
+            // Tạo bản ghi service suggestion
             ServiceSuggestion suggestion = ServiceSuggestion.builder()
                     .serviceOrder(serviceOrder)
                     .serviceName(serviceName)
@@ -654,11 +547,9 @@ public class ServiceOrderService {
                     .build();
             
             serviceSuggestionRepository.save(suggestion);
-            log.info("Service suggestion saved successfully");
-            log.info("=== ADD SERVICE SUGGESTION - COMPLETED ===");
-            
+
         } catch (Exception e) {
-            log.error("Error parsing/saving suggestion: {}", e.getMessage(), e);
+            log.error("Lỗi khi parse/lưu suggestion: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         
@@ -666,15 +557,11 @@ public class ServiceOrderService {
     }
 
     /**
-     * Get service suggestions for a service order (return DTO to avoid lazy loading)
+     * Lấy danh sách dịch vụ đề xuất cho service order (trả về DTO để tránh lazy loading)
      */
     public List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse> getServiceSuggestions(UUID serviceOrderId) {
-        log.debug("Getting service suggestions for Service Order ID: {}", serviceOrderId);
-        
         List<ServiceSuggestion> suggestions = serviceSuggestionRepository.findByServiceOrderId(serviceOrderId);
-        
-        log.info("Found {} service suggestions for Service Order ID: {}", suggestions.size(), serviceOrderId);
-        
+
         List<com.swp391.EV.service.dto.response.ServiceSuggestionResponse> responses = suggestions.stream()
                 .map(s -> com.swp391.EV.service.dto.response.ServiceSuggestionResponse.builder()
                         .id(s.getId())
@@ -691,7 +578,7 @@ public class ServiceOrderService {
     }
 
     /**
-     * Update suggestion status (APPROVED/REJECTED)
+     * Cập nhật trạng thái suggestion (APPROVED/REJECTED)
      */
     @Transactional
     public ServiceSuggestion updateSuggestionStatus(UUID suggestionId, ServiceSuggestion.SuggestionStatus status) {
@@ -723,7 +610,7 @@ public class ServiceOrderService {
                 response.setCustomer(customerInfo);
             }
         } catch (Exception e) {
-            log.error("Error loading customer info: {}", e.getMessage());
+            log.error("Lỗi khi load thông tin customer: {}", e.getMessage());
         }
         
         // Lấy thông tin vehicle từ appointment
@@ -739,7 +626,7 @@ public class ServiceOrderService {
                 response.setVehicle(vehicleInfo);
             }
         } catch (Exception e) {
-            log.error("Error loading vehicle info: {}", e.getMessage());
+            log.error("Lỗi khi load thông tin vehicle: {}", e.getMessage());
         }
         
         // Lấy thông tin technician từ technicianUserId
@@ -753,7 +640,7 @@ public class ServiceOrderService {
                     
                     ServiceOrderResponse.TechnicianInfo technicianInfo = new ServiceOrderResponse.TechnicianInfo();
                     
-                    // Split fullName into firstName and lastName
+                    // Tách fullName thành firstName và lastName
                     String fullName = techUser.getFullName() != null ? techUser.getFullName() : "";
                     String[] nameParts = fullName.trim().split("\\s+", 2);
                     technicianInfo.setFirstName(nameParts.length > 0 ? nameParts[0] : "");
@@ -764,14 +651,14 @@ public class ServiceOrderService {
                     response.setTechnician(technicianInfo);
                 }
             } catch (Exception e) {
-                // LazyInitializationException - skip technician name
-                log.error("Error loading technician info: {}", e.getMessage());
+                // LazyInitializationException - bỏ qua tên technician
+                log.error("Lỗi khi load thông tin technician: {}", e.getMessage());
                 response.setTechnicianName("Unknown");
             }
         }
         
-        // NOTE: Status được lấy từ appointment.status, không lưu ở service_order nữa
-        // response.setStatus() - REMOVED
+        // LƯU Ý: Status được lấy từ appointment.status, không lưu ở service_order nữa
+        // response.setStatus() - ĐÃ BỎ
         response.setStartTime(serviceOrder.getStartTime());
         response.setEndTime(serviceOrder.getEndTime());
         response.setChecklist(serviceOrder.getChecklist());

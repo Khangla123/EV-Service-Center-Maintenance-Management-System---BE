@@ -8,7 +8,6 @@ import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.Customer;
 import com.swp391.EV.service.model.Invoice;
 import com.swp391.EV.service.model.ServiceOrder;
-import com.swp391.EV.service.model.User;
 import com.swp391.EV.service.repository.CustomerRepository;
 import com.swp391.EV.service.repository.InvoiceRepository;
 import com.swp391.EV.service.repository.ServiceOrderRepository;
@@ -16,6 +15,7 @@ import com.swp391.EV.service.repository.ServiceOrderPartRepository;
 import com.swp391.EV.service.repository.ServiceSuggestionRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -32,84 +32,64 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InvoiceService {
 
+    @Autowired
     private final InvoiceRepository invoiceRepository;
+    @Autowired
     private final ServiceOrderRepository serviceOrderRepository;
+    @Autowired
     private final CustomerRepository customerRepository;
+    @Autowired
     private final ServiceOrderPartRepository serviceOrderPartRepository;
+    @Autowired
     private final ServiceSuggestionRepository serviceSuggestionRepository;
+    @Autowired
     private final ModelMapper modelMapper;
 
     @Transactional
     public InvoiceResponse createInvoice(CreateInvoiceRequest request) {
-        // Fetch ServiceOrder with all necessary relationships to avoid lazy loading issues
+        // Lấy ServiceOrder với tất cả các mối quan hệ để tránh lỗi lazy loading
         ServiceOrder serviceOrder = serviceOrderRepository.findByIdWithRelations(request.getServiceOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.SERVICE_ORDER_NOT_FOUND));
-
-        // Get customer from service order
         Customer customer = serviceOrder.getAppointment().getCustomer();
-
-        // Generate invoice number
         String invoiceNumber = generateInvoiceNumber();
-
-        // Calculate subtotal from service order
         BigDecimal subtotal = request.getSubtotal();
-        
-        // If subtotal not provided, calculate from service package + parts
+
+        // Nếu subtotal không được cung cấp, tính toán từ gói dịch vụ + phụ tùng
         if (subtotal == null || subtotal.compareTo(BigDecimal.ZERO) == 0) {
-            System.out.println("===========================");
-            System.out.println("💰 CALCULATING INVOICE AMOUNT");
-            
-            // 1. Get service package price
+            // 1. Lấy giá gói dịch vụ
             BigDecimal servicePrice = BigDecimal.ZERO;
             if (serviceOrder.getAppointment() != null 
                 && serviceOrder.getAppointment().getServicePackage() != null) {
                 servicePrice = serviceOrder.getAppointment().getServicePackage().getPrice();
-                System.out.println("Service package price: " + servicePrice);
             }
             
-            // 2. Get parts total from service_order_parts
+            // 2. Lấy tổng tiền phụ tùng từ bảng service_order_parts
             BigDecimal partsTotal = serviceOrderPartRepository.findByServiceOrderId(serviceOrder.getId())
                 .stream()
-                .map(part -> {
-                    BigDecimal partTotal = part.getTotalPrice();
-                    System.out.println("Part: " + part.getPart().getName() 
-                        + " x " + part.getQuantity() 
-                        + " = " + partTotal);
-                    return partTotal;
-                })
+                .map(part -> part.getTotalPrice())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-            System.out.println("Parts total: " + partsTotal);
-            
-            // 3. Get approved service suggestions total
+
+            // 3. Lấy tổng tiền dịch vụ đề xuất đã được phê duyệt
             BigDecimal suggestionsTotal = serviceSuggestionRepository
                 .findByServiceOrderIdAndStatus(serviceOrder.getId(), 
                     com.swp391.EV.service.model.ServiceSuggestion.SuggestionStatus.APPROVED)
                 .stream()
-                .map(suggestion -> {
-                    BigDecimal suggestionCost = suggestion.getEstimatedCost();
-                    System.out.println("Approved suggestion: " + suggestion.getServiceName() 
-                        + " = " + suggestionCost);
-                    return suggestionCost;
-                })
+                .map(suggestion -> suggestion.getEstimatedCost())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-            System.out.println("Approved suggestions total: " + suggestionsTotal);
-            
+
             subtotal = servicePrice.add(partsTotal).add(suggestionsTotal);
-            System.out.println("Subtotal (service + parts + approved suggestions): " + subtotal);
-            System.out.println("===========================");
         }
 
-        // Calculate total amount
-        BigDecimal taxAmount = request.getTaxAmount() != null ? request.getTaxAmount() : BigDecimal.ZERO;
+        // Tính tổng số tiền cuối cùng
         BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
-        BigDecimal totalAmount = subtotal.add(taxAmount).subtract(discountAmount);
+        BigDecimal totalAmount = subtotal.subtract(discountAmount);
 
         Invoice invoice = Invoice.builder()
                 .serviceOrder(serviceOrder)
                 .customer(customer)
                 .invoiceNumber(invoiceNumber)
                 .subtotal(request.getSubtotal())
-                .taxAmount(taxAmount)
+                .taxAmount(BigDecimal.ZERO)
                 .discountAmount(discountAmount)
                 .totalAmount(totalAmount)
                 .issuedAt(LocalDateTime.now())
@@ -118,7 +98,7 @@ public class InvoiceService {
 
         invoice = invoiceRepository.save(invoice);
         
-        // Fetch invoice again with all relationships to avoid lazy loading issues
+        // Lấy lại invoice với tất cả các mối quan hệ để tránh lỗi lazy loading
         invoice = invoiceRepository.findByIdWithRelations(invoice.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
         
@@ -150,11 +130,7 @@ public class InvoiceService {
                 .collect(Collectors.toList());
     }
     
-    public Invoice getInvoiceByServiceOrderId(UUID serviceOrderId) {
-        List<Invoice> invoices = invoiceRepository.findByServiceOrderId(serviceOrderId);
-        return invoices.isEmpty() ? null : invoices.get(0);
-    }
-    
+
     public List<InvoiceResponse> getUnpaidInvoices() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Jwt jwt = (Jwt) authentication.getPrincipal();
@@ -178,9 +154,6 @@ public class InvoiceService {
         if (request.getSubtotal() != null) {
             invoice.setSubtotal(request.getSubtotal());
         }
-        if (request.getTaxAmount() != null) {
-            invoice.setTaxAmount(request.getTaxAmount());
-        }
         if (request.getDiscountAmount() != null) {
             invoice.setDiscountAmount(request.getDiscountAmount());
         }
@@ -188,9 +161,8 @@ public class InvoiceService {
             invoice.setDueDate(request.getDueDate());
         }
 
-        // Recalculate total amount
+        // Tính lại tổng số tiền (không bao gồm thuế)
         BigDecimal totalAmount = invoice.getSubtotal()
-                .add(invoice.getTaxAmount())
                 .subtract(invoice.getDiscountAmount());
         invoice.setTotalAmount(totalAmount);
 
@@ -210,11 +182,11 @@ public class InvoiceService {
             response.setServiceOrderId(invoice.getServiceOrder().getId());
             response.setOrderCode(invoice.getServiceOrder().getOrderCode());
             
-            // Get appointment info
+            // Lấy thông tin appointment
             if (invoice.getServiceOrder().getAppointment() != null) {
                 response.setAppointmentId(invoice.getServiceOrder().getAppointment().getId());
                 
-                // Get vehicle info from appointment
+                // Lấy thông tin xe từ appointment
                 if (invoice.getServiceOrder().getAppointment().getVehicle() != null) {
                     response.setVehicleLicensePlate(
                         invoice.getServiceOrder().getAppointment().getVehicle().getLicensePlate()
@@ -228,7 +200,7 @@ public class InvoiceService {
             response.setCustomerName(invoice.getCustomer().getFullName());
         }
         
-        // Set aliases for frontend compatibility
+        // Set các alias để tương thích với frontend
         response.setFinalAmount(invoice.getTotalAmount());
         response.setIssueDate(invoice.getIssuedAt());
         response.setDiscount(invoice.getDiscountAmount());

@@ -8,6 +8,7 @@ import com.swp391.EV.service.exception.ErrorCode;
 import com.swp391.EV.service.model.VehicleModel;
 import com.swp391.EV.service.repository.VehicleModelRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class VehicleModelService {
 
+    @Autowired
     private final VehicleModelRepository vehicleModelRepository;
 
     public List<VehicleModelResponse> getAllVehicleModels() {

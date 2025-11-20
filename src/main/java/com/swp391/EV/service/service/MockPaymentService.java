@@ -9,6 +9,7 @@ import com.swp391.EV.service.repository.InvoiceRepository;
 import com.swp391.EV.service.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class MockPaymentService {
 
+    @Autowired
     private final PaymentRepository paymentRepository;
+    @Autowired
     private final InvoiceRepository invoiceRepository;
 
     // Store pending payments in memory

@@ -11,6 +11,7 @@ import com.swp391.EV.service.service.VehicleModelService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +24,9 @@ import java.util.UUID;
 @Tag(name = "Vehicles", description = "Quản lý xe và loại xe")
 public class VehicleController {
 
+    @Autowired
     private final VehicleService vehicleService;
+    @Autowired
     private final VehicleModelService vehicleModelService;
 
 

@@ -9,6 +9,7 @@ import com.swp391.EV.service.service.StaffService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,7 @@ import java.util.UUID;
 @Tag(name = "Staff", description = "Staff Management APIs")
 public class StaffController {
 
+    @Autowired
     private final StaffService staffService;
 
     @PostMapping
