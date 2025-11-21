@@ -37,6 +37,8 @@ public enum ErrorCode {
     INVOICE_NOT_FOUND(1026, "Không tìm thấy hóa đơn", HttpStatus.NOT_FOUND),
     PAYMENT_NOT_FOUND(1027, "Không tìm thấy thanh toán", HttpStatus.NOT_FOUND),
     VEHICLE_NOT_FOUND(1028, "Không tìm thấy xe", HttpStatus.NOT_FOUND),
+    VEHICLE_EXISTED(1030, "Xe đã tồn tại (VIN hoặc biển số trùng lặp)", HttpStatus.BAD_REQUEST),
+    VEHICLE_MODEL_NOT_FOUND(1031, "Không tìm thấy mẫu xe", HttpStatus.NOT_FOUND),
     APPOINTMENT_NOT_FOUND(1029, "Không tìm thấy lịch hẹn", HttpStatus.NOT_FOUND);
 
     private final int code;

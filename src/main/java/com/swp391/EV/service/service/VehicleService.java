@@ -48,20 +48,20 @@ public class VehicleService {
 
         // Kiểm tra VIN đã tồn tại chưa
         if (vehicleRepository.findByVin(request.getVin()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED);
+            throw new AppException(ErrorCode.VEHICLE_EXISTED);
         }
 
         // Kiểm tra biển số đã tồn tại chưa
         if (request.getLicensePlate() != null &&
             vehicleRepository.findByLicensePlate(request.getLicensePlate()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED);
+            throw new AppException(ErrorCode.VEHICLE_EXISTED);
         }
 
         // Tìm VehicleModel nếu có vehicleModelId
         VehicleModel vehicleModel = null;
         if (request.getVehicleModelId() != null) {
             vehicleModel = vehicleModelRepository.findById(request.getVehicleModelId())
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                    .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_MODEL_NOT_FOUND));
         }
 
         Vehicle vehicle = Vehicle.builder()
@@ -90,20 +90,20 @@ public class VehicleService {
 
         // Kiểm tra VIN đã tồn tại chưa
         if (vehicleRepository.findByVin(request.getVin()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED);
+            throw new AppException(ErrorCode.VEHICLE_EXISTED);
         }
 
         // Kiểm tra biển số đã tồn tại chưa
         if (request.getLicensePlate() != null &&
             vehicleRepository.findByLicensePlate(request.getLicensePlate()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED);
+            throw new AppException(ErrorCode.VEHICLE_EXISTED);
         }
 
         // Tìm VehicleModel nếu có vehicleModelId
         VehicleModel vehicleModel = null;
         if (request.getVehicleModelId() != null) {
             vehicleModel = vehicleModelRepository.findById(request.getVehicleModelId())
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                    .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_MODEL_NOT_FOUND));
         }
 
         Vehicle vehicle = Vehicle.builder()

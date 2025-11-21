@@ -143,6 +143,10 @@ public class MaintenanceHistoryService {
 
         // Parse selected packages and generate comma-separated package names
         String selectedPackageNames = null;
+        BigDecimal totalAmount = appointment.getServicePackage() != null 
+                ? appointment.getServicePackage().getPrice() 
+                : BigDecimal.ZERO;
+        
         if (appointment.getSelectedPackages() != null && !appointment.getSelectedPackages().trim().isEmpty()) {
             try {
                 List<String> packageIdStrings = objectMapper.readValue(
@@ -154,14 +158,29 @@ public class MaintenanceHistoryService {
                         .map(idStr -> {
                             try {
                                 UUID packageId = UUID.fromString(idStr);
-                                return servicePackageRepository.findById(packageId)
-                                        .map(ServicePackage::getName)
-                                        .orElse("Unknown Package");
+                                ServicePackage pkg = servicePackageRepository.findById(packageId).orElse(null);
+                                if (pkg != null) {
+                                    return pkg.getName();
+                                }
+                                return "Unknown Package";
                             } catch (IllegalArgumentException e) {
                                 return "Invalid Package ID";
                             }
                         })
                         .collect(Collectors.toList());
+                
+                // Calculate total with selected packages
+                for (String idStr : packageIdStrings) {
+                    try {
+                        UUID packageId = UUID.fromString(idStr);
+                        ServicePackage pkg = servicePackageRepository.findById(packageId).orElse(null);
+                        if (pkg != null) {
+                            totalAmount = totalAmount.add(pkg.getPrice());
+                        }
+                    } catch (IllegalArgumentException e) {
+                        // Ignore invalid package IDs
+                    }
+                }
                 
                 selectedPackageNames = String.join(", ", packageNames);
             } catch (Exception e) {
@@ -194,7 +213,7 @@ public class MaintenanceHistoryService {
                 .vehicleModel(vehicleModel)
                 .licensePlate(licensePlate)
                 .mileage(mileage)
-                .totalAmount(appointment.getServicePackage() != null ? appointment.getServicePackage().getPrice() : BigDecimal.ZERO)
+                .totalAmount(totalAmount)
                 .serviceDate(appointment.getAppointmentDate())
                 .nextMaintenanceDate(nextMaintenanceDate)
                 .status(appointment.getStatus().name())

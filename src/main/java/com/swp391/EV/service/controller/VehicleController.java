@@ -3,6 +3,7 @@ package com.swp391.EV.service.controller;
 import com.swp391.EV.service.dto.ApiResponse;
 import com.swp391.EV.service.dto.request.CreateVehicleRequest;
 import com.swp391.EV.service.dto.request.CreateVehicleModelRequest;
+import com.swp391.EV.service.dto.request.UpdateVehicleRequest;
 import com.swp391.EV.service.dto.request.UpdateVehicleModelRequest;
 import com.swp391.EV.service.dto.response.VehicleResponse;
 import com.swp391.EV.service.dto.response.VehicleModelResponse;
@@ -132,6 +133,38 @@ public class VehicleController {
         return ApiResponse.<VehicleResponse>builder()
                 .message("Đăng ký xe thành công")
                 .result(response)
+                .build();
+    }
+
+    @PutMapping("/me/{vehicleId}")
+    @Operation(summary = "Cập nhật xe của tôi", description = "CUSTOMER cập nhật thông tin xe của mình")
+    public ApiResponse<VehicleResponse> updateMyVehicle(
+            @PathVariable UUID vehicleId,
+            @RequestBody UpdateVehicleRequest request,
+            Authentication authentication) {
+        // Lấy userId từ Authentication để verify ownership
+        String userIdString = authentication != null ? authentication.getName() : null;
+        UUID currentUserId = userIdString != null ? UUID.fromString(userIdString) : null;
+        
+        VehicleResponse response = vehicleService.updateVehicle(vehicleId, request);
+        return ApiResponse.<VehicleResponse>builder()
+                .message("Cập nhật xe thành công")
+                .result(response)
+                .build();
+    }
+
+    @DeleteMapping("/me/{vehicleId}")
+    @Operation(summary = "Xóa xe của tôi", description = "CUSTOMER xóa xe của mình")
+    public ApiResponse<String> deleteMyVehicle(
+            @PathVariable UUID vehicleId,
+            Authentication authentication) {
+        // Lấy userId từ Authentication để verify ownership
+        String userIdString = authentication != null ? authentication.getName() : null;
+        UUID currentUserId = userIdString != null ? UUID.fromString(userIdString) : null;
+        
+        vehicleService.deleteVehicle(vehicleId);
+        return ApiResponse.<String>builder()
+                .message("Xóa xe thành công")
                 .build();
     }
 }
